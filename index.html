@@ -66,7 +66,7 @@
   .wrap{margin-top:10px;padding:10px;background:#f7f7fb;border-radius:10px;font-size:13px;white-space:pre-wrap;line-height:1.5}
   .wrap b{display:block;margin-bottom:4px;font-size:12px;color:var(--sub)}
 
-  .stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:14px 14px 84px}
+  .stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:10px 10px 76px}
   canvas{border-radius:18px;box-shadow:0 8px 30px rgba(40,40,90,.10);background:#fff;cursor:pointer}
   .bar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:8px;padding:8px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(40,40,90,.16)}
   .bar button{background:#f1f2f7;color:var(--text);padding:10px 14px;white-space:nowrap}
@@ -99,16 +99,16 @@
   #mapWrap canvas{display:block}
   #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
   #mapWrap .undone{position:absolute;left:68%;top:71%;width:29.6%;height:27.6%;background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 10px rgba(40,40,90,.08)}
-  .undone h4{margin:0;padding:8px 12px;background:#3d4263;color:#fff;font-size:13px}
+  .undone h4{margin:0;padding:9px 12px;background:#3d4263;color:#fff;font-size:15px}
   #undoneBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
   .ucol{padding:8px 10px;overflow:auto;min-width:0}
   .ucol + .ucol{border-left:1px solid var(--line)}
-  .uh{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .uh{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
   .uh span{font-weight:500;color:var(--sub);font-size:11px}
-  .ui{display:flex;gap:4px;align-items:flex-start;font-size:12.5px;line-height:1.4;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .ui{display:flex;gap:4px;align-items:flex-start;font-size:14px;line-height:1.4;padding:4px 0;border-bottom:1px dashed var(--line)}
   .ui span{flex:1;word-break:break-word}
   .ui button{padding:0 6px;background:var(--accent-soft);color:var(--accent);border-radius:6px;font-size:13px;flex:none}
-  #mapWrap #chatList{padding:8px;gap:5px;font-size:13px}
+  #mapWrap #chatList{padding:8px;gap:5px;font-size:14px}
   #mapWrap .chat .row{padding:6px;gap:6px}
   #mapWrap .chat input{padding:6px 9px}
   #mapWrap .chat button{padding:6px 11px}
@@ -197,7 +197,6 @@
         </div>
         <div class="undone"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
       </div>
-      <div class="hint">쉬는 공간이나 책상을 클릭하면 이동해요</div>
       <div class="bar">
         <span class="grp"><button id="bMic">🎤 마이크</button><button class="pick" id="bMicPick" title="마이크 선택">▾</button></span>
         <span class="grp"><button id="bCam">📷 카메라</button><button class="pick" id="bCamPick" title="카메라 선택">▾</button></span>
@@ -268,7 +267,7 @@ function hash(str){ let h1=0xdeadbeef, h2=0x41c6ce57; for (let i=0;i<str.length;
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('#toasts').append(t); setTimeout(()=>t.remove(), 3500); }
 
 /* ───────── 상태 ───────── */
-const W = 1280, H = 760;
+const W = 1280; let H = 760;
 const SEATS = [{x:490,y:468},{x:790,y:468}];
 const REST = { x:420, y:600, w:440, h:110 };
 const inRest = a => a.x >= REST.x && a.x <= REST.x+REST.w && a.y >= REST.y-14 && a.y <= REST.y+REST.h+6;
@@ -312,7 +311,7 @@ function seatOf(name){ const s = [me.name, partner.name].filter(Boolean).sort();
   $('#jGo').onclick = go;
   [$('#jName'), $('#jRoom')].forEach(e => e.addEventListener('keydown', ev => { if (ev.key==='Enter') go(); }));
 })();
-function sitDown(){ const s = SEATS[seatOf(me.name)]; me.x=s.x; me.y=s.y; me.tx=me.ty=null; wantRest = false; updateRestBtn(); }
+function sitDown(){ wantRest = false; me.moving = false; updateRestBtn(); }
 
 /* ───────── 연결 (PeerJS) ───────── */
 function setConn(s){ connState = s; renderHeader(); }
@@ -340,7 +339,7 @@ function setupConn(c){
   c.on('open', () => {
     if (conn && conn !== c) { try { conn.close(); } catch {} }
     conn = c; pending = null; lastSeen = Date.now(); partner.online = true; setConn('connected');
-    send({ t:'hello', name:me.name, color:me.color, x:me.x, y:me.y, records:Object.values(records), chat:chat.slice(-300) });
+    send({ t:'hello', name:me.name, color:me.color, rest:wantRest, records:Object.values(records), chat:chat.slice(-300) });
     Object.keys(local).forEach(callOut);
   });
   c.on('data', d => { if (c===conn){ lastSeen = Date.now(); handle(d); } });
@@ -364,9 +363,8 @@ function handle(d){
     const nm = String(d.name||'').slice(0,10);
     if (nm === me.name) toast('두 사람 이름이 같아요. 서로 다른 이름으로 들어와 주세요!');
     const first = partner.name !== nm; partner.name = nm; if (COLORS.includes(d.color)) partner.color = d.color;
-    partner.x = partner.rx = +d.x||790; partner.y = partner.ry = +d.y||468;
+    partner.rest = d.rest ?? (+d.y > 540); partner.snap = true;
     (d.records||[]).forEach(mergeRec); if (mergeChat(d.chat)) renderChat(); save();
-    if (first){ if (wantRest) goTo('rest'); else sitDown(); }
     toast(`${nm}님이 들어왔어요 👋`); render();
   } else if (d.t === 'rec'){
     const before = records[d.r?.date+'|'+d.r?.user] || {};
@@ -381,7 +379,7 @@ function handle(d){
       const m = chat.find(c => c.id === d.m.id); save(); renderChat();
       if (document.hidden){ unread++; document.title = `(${unread}) 월 매출 1억 사무실`; }
     }
-  } else if (d.t === 'pos'){ partner.rx = +d.x||0; partner.ry = +d.y||0; }
+  } else if (d.t === 'pos'){ partner.rest = d.rest ?? (+d.y > 540); }
   else if (d.t === 'stop'){ if (d.kind==='mic') $('#remoteAudio').srcObject = null; else removeTile('p-'+d.kind); }
   else if (d.t === 'bye'){ dropConn(); }
 }
@@ -750,28 +748,35 @@ setInterval(() => {
 
 /* ───────── 사무실 맵 (캔버스) ───────── */
 const cv = $('#cv'), ctx = cv.getContext('2d');
-let scale = 1;
+let scale = 1, wantRest = false;
+const LY = {};
+function layout(){          // 맵 높이(H)가 창에 맞춰 늘어나면 그만큼 패널·모니터·아래 칸을 키운다
+  const e = H-760, e1 = Math.round(e*0.6), e2 = e-e1;
+  LY.panelH = 460+e1; LY.zoneB = 534+e1; LY.boardH = 214+Math.round(e1*0.65);
+  LY.deskY = 66+LY.boardH+70; SEATS[0].y = SEATS[1].y = LY.deskY+118;
+  LY.bandY = 540+e1; LY.bandH = 208+e2;
+  REST.y = LY.bandY+30; REST.h = LY.bandH-60;
+}
 function resize(){
-  const st = $('#stage'), aw = st.clientWidth-28, ah = st.clientHeight-98;
+  const st = $('#stage'), aw = st.clientWidth-20, ah = st.clientHeight-86;
+  if (aw <= 0 || ah <= 0) return;
+  H = Math.max(760, Math.min(1060, Math.round(W*ah/aw))); layout();
   const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
   cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px';
   cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
+  for (const [sel, x] of [['#mapWrap .chat', 28], ['#mapWrap .undone', 872]]){
+    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (380/W*100)+'%'; el.top = (LY.bandY/H*100)+'%'; el.height = (LY.bandH/H*100)+'%';
+  }
 }
-addEventListener('resize', resize);
-const keys = new Set(); let keysMoved = false;
-const typing = () => /INPUT|TEXTAREA/.test(document.activeElement?.tagName) || document.querySelector('.modal:not(.hidden)');
-addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
-addEventListener('blur', () => keys.clear());
-let wantRest = false;
-const restSpot = () => ({ x: seatOf(me.name) === 0 ? 485 : 795, y: 662 });
+addEventListener('resize', resize); layout();
+const spot = (name, rest) => rest ? { x: seatOf(name) === 0 ? 485 : 795, y: REST.y+REST.h/2+10 } : SEATS[seatOf(name)];
 function updateRestBtn(){ const b = $('#bRest'); b.textContent = wantRest ? '💺 자리로 돌아가기' : '☕ 쉬러 가기'; b.className = wantRest ? 'on' : ''; }
 function goTo(where){          // 갈 수 있는 곳은 내 의자와 쉬는 공간 두 곳뿐
-  wantRest = where === 'rest'; const t = wantRest ? restSpot() : SEATS[seatOf(me.name)];
-  me.tx = t.x; me.ty = t.y; updateRestBtn(); syncBreak();
+  wantRest = where === 'rest'; me.moving = true; updateRestBtn(); syncBreak(); send({ t:'pos', rest:wantRest });
 }
 cv.addEventListener('click', e => {
   const b = cv.getBoundingClientRect(), x = (e.clientX-b.left)/b.width*W, y = (e.clientY-b.top)/b.height*H;
-  if (inRest({ x, y })) goTo('rest'); else if (x >= 310 && x <= 970 && y >= 44 && y <= 534) goTo('seat');
+  if (inRest({ x, y })) goTo('rest'); else if (x >= 310 && x <= 970 && y >= 44 && y <= LY.zoneB) goTo('seat');
 });
 $('#bRest').onclick = () => goTo(wantRest ? 'seat' : 'rest');
 
@@ -793,29 +798,37 @@ function drawFloor(){
 }
 function panel(x,y,w,h,title){
   rr(x,y+4,w,h,14,'rgba(40,40,80,.08)'); rr(x,y,w,h,14,'#fff','#d9dce8');
-  ctx.beginPath(); ctx.roundRect(x,y,w,40,[14,14,0,0]); ctx.fillStyle = '#3d4263'; ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '700 14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(title, x+14, y+21);
+  ctx.beginPath(); ctx.roundRect(x,y,w,44,[14,14,0,0]); ctx.fillStyle = '#3d4263'; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '700 17px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(title, x+14, y+23);
 }
+function personHead(x, y, w, name, col, label, cls){          // 패널 안 한 사람 칸의 머리줄 (이름 + 상태)
+  ctx.textAlign = 'left'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+24, y+13, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#23263a'; ctx.font = '700 19px sans-serif'; ctx.fillText(fit(name, 120), x+38, y+14);
+  if (!label) return;
+  ctx.font = '700 13px sans-serif'; const tw = ctx.measureText(label).width + 18;
+  rr(x+w-16-tw, y+1, tw, 26, 13, PILL[cls][0]); ctx.fillStyle = PILL[cls][1]; ctx.fillText(label, x+w-16-tw+9, y+14.5);
+}
+function rowsOf(x, w, y0, gap, rows, col){
+  rows.forEach(([k, v, big], n) => {
+    const ry = y0 + n*gap;
+    ctx.font = '15px sans-serif'; ctx.fillStyle = '#7b8098'; ctx.textAlign = 'left'; ctx.fillText(k, x+22, ry);
+    ctx.fillStyle = big ? col : '#23263a'; ctx.font = big ? '800 19px sans-serif' : '600 15px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(v, x+w-18, ry);
+  });
+}
+function waiting(x, w, y){ ctx.fillStyle = '#a3a8bd'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('동료를 기다리는 중…', x+w/2, y); }
+function divider(x, w, y){ ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+16, y); ctx.lineTo(x+w-16, y); ctx.stroke(); }
 function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
-  const x = 40, y = 62, w = 250, h = 460; panel(x,y,w,h,'📋 오늘 출근 현황');
+  const x = 28, y = 62, w = 270, h = LY.panelH, bh = (h-62)/2; panel(x,y,w,h,'📋 오늘 출근 현황');
   const names = [me.name, partner.name].filter(Boolean).sort();
   for (let i = 0; i < 2; i++){
-    const by = y+58+i*202, name = names[i];
-    if (i === 1){ ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+16, by-16); ctx.lineTo(x+w-16, by-16); ctx.stroke(); }
-    if (!name){ ctx.fillStyle = '#a3a8bd'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('동료를 기다리는 중…', x+w/2, by+84); continue; }
+    const by = y+62+i*bh, name = names[i];
+    if (i === 1) divider(x, w, by-12);
+    if (!name){ waiting(x, w, by+bh/2-10); continue; }
     const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
-    ctx.textAlign = 'left'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+22, by+12, 6, 0, 7); ctx.fill();
-    ctx.fillStyle = '#23263a'; ctx.font = '700 16px sans-serif'; ctx.fillText(fit(name, 110), x+34, by+13);
-    const label = { work:'근무 중', rest:'휴식 중', off:'퇴근', '':'출근 전' }[st.cls];
-    ctx.font = '600 11px sans-serif'; const tw = ctx.measureText(label).width + 16;
-    rr(x+w-16-tw, by+1, tw, 22, 11, PILL[st.cls][0]); ctx.fillStyle = PILL[st.cls][1]; ctx.fillText(label, x+w-16-tw+8, by+12.5);
+    personHead(x, by, w, name, col, { work:'근무 중', rest:'휴식 중', off:'퇴근', '':'출근 전' }[st.cls], st.cls);
     const done = r.todos.filter(t => t.done).length;
-    const rows = [['출근', r.checkIn ? hm(r.checkIn) : '—'], ['퇴근', r.checkOut ? hm(r.checkOut) : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—'], ['휴식', r.checkIn ? dur(breakMs(r)) : '—'], ['할 일', r.todos.length ? `${done}/${r.todos.length} 완료` : '—']];
-    rows.forEach(([k,v], n) => {
-      const ry = by+46+n*27;
-      ctx.font = '13px sans-serif'; ctx.fillStyle = '#7b8098'; ctx.textAlign = 'left'; ctx.fillText(k, x+22, ry);
-      ctx.fillStyle = n===2 ? col : '#23263a'; ctx.font = n===2 ? '700 16px sans-serif' : '600 13px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(v, x+w-18, ry);
-    });
+    rowsOf(x, w, by+52, Math.min(38, (bh-72)/5), [['출근', r.checkIn ? hm(r.checkIn) : '—'], ['퇴근', r.checkOut ? hm(r.checkOut) : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true],
+      ['휴식', r.checkIn ? dur(breakMs(r)) : '—'], ['할 일', r.todos.length ? `${done}/${r.todos.length} 완료` : '—']], col);
   }
 }
 function weekData(){
@@ -824,97 +837,93 @@ function weekData(){
   return { names, days, get:(d, n) => { const r = records[dateKey(d)+'|'+n]; return r ? netMs(r) : 0; } };
 }
 function drawSummary(){             // 오른쪽 벽: 최근 7일 요약 (큰 숫자)
-  const x = 990, y = 62, w = 250, h = 460; panel(x,y,w,h,'🏆 최근 7일 요약');
+  const x = 982, y = 62, w = 270, h = LY.panelH, bh = (h-62)/2; panel(x,y,w,h,'🏆 최근 7일 요약');
   const { names, days, get } = weekData();
   for (let i = 0; i < 2; i++){
-    const by = y+58+i*202, n = names[i];
-    if (i === 1){ ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+16, by-16); ctx.lineTo(x+w-16, by-16); ctx.stroke(); }
-    if (!n){ ctx.fillStyle = '#a3a8bd'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('동료를 기다리는 중…', x+w/2, by+84); continue; }
+    const by = y+62+i*bh, n = names[i];
+    if (i === 1) divider(x, w, by-12);
+    if (!n){ waiting(x, w, by+bh/2-10); continue; }
     const col = n===me.name ? me.color : partner.color, vals = days.map(d => get(d, n));
     const total = vals.reduce((a,b) => a+b, 0), worked = vals.filter(v => v > 0).length, best = Math.max(...vals), bd = days[vals.indexOf(best)];
-    ctx.textAlign = 'left'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+22, by+12, 6, 0, 7); ctx.fill();
-    ctx.fillStyle = '#23263a'; ctx.font = '700 16px sans-serif'; ctx.fillText(fit(n, 120), x+34, by+13);
-    ctx.fillStyle = '#7b8098'; ctx.font = '12px sans-serif'; ctx.fillText('7일 합계', x+22, by+42);
-    ctx.fillStyle = col; ctx.font = '800 27px sans-serif'; ctx.fillText(dur(total), x+22, by+70);
-    const rows = [['하루 평균', worked ? dur(total/worked) : '—'], ['출근한 날', worked + '일'], ['최고 기록', best > 0 ? `${bd.getMonth()+1}/${bd.getDate()} · ${dur(best)}` : '—']];
-    rows.forEach(([k,v], m) => {
-      const ry = by+106+m*27;
-      ctx.font = '13px sans-serif'; ctx.fillStyle = '#7b8098'; ctx.textAlign = 'left'; ctx.fillText(k, x+22, ry);
-      ctx.fillStyle = '#23263a'; ctx.font = '600 13px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(v, x+w-18, ry);
-    });
+    personHead(x, by, w, n, col);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#7b8098'; ctx.font = '14px sans-serif'; ctx.fillText('7일 합계', x+22, by+46);
+    ctx.fillStyle = col; ctx.font = '800 32px sans-serif'; ctx.fillText(dur(total), x+22, by+80);
+    rowsOf(x, w, by+120, Math.min(38, (bh-132)/3), [['하루 평균', worked ? dur(total/worked) : '—'], ['출근한 날', worked + '일'], ['최고 기록', best > 0 ? `${bd.getMonth()+1}/${bd.getDate()} · ${dur(best)}` : '—']], col);
   }
 }
 function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
 
 function drawBoard(i, name){
-  const x = 360 + i*300, y = 66, w = 260, h = 214;
+  const x = 360 + i*300, y = 66, w = 260, h = LY.boardH;
   rr(x+w/2-8, y+h, 16, 22, 0, '#aeb3c6'); rr(x+w/2-40, y+h+20, 80, 8, 4, '#aeb3c6');
   rr(x, y, w, h, 14, '#262a41'); rr(x+8, y+8, w-16, h-16, 8, '#fbfbff');
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  if (!name){ ctx.fillStyle='#a3a8bd'; ctx.font='600 14px sans-serif'; ctx.textAlign='center'; ctx.fillText('빈 자리', x+w/2, y+h/2-10); ctx.font='12px sans-serif'; ctx.fillText('동료를 기다리는 중…', x+w/2, y+h/2+12); return; }
+  if (!name){ ctx.fillStyle='#a3a8bd'; ctx.font='700 17px sans-serif'; ctx.textAlign='center'; ctx.fillText('빈 자리', x+w/2, y+h/2-12); ctx.font='14px sans-serif'; ctx.fillText('동료를 기다리는 중…', x+w/2, y+h/2+14); return; }
   const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
-  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+26, y+30, 6, 0, 7); ctx.fill();
-  ctx.fillStyle = '#23263a'; ctx.font = '700 15px sans-serif'; ctx.fillText(fit(name, 80), x+38, y+31);
-  ctx.font = '600 11px sans-serif'; const tw = ctx.measureText(st.short).width + 16;
-  rr(x+w-20-tw, y+20, tw, 22, 11, st.cls==='work' ? '#ecebff' : st.cls==='off' ? '#fff3d6' : st.cls==='rest' ? '#d9f3ee' : '#eef0f5');
-  ctx.fillStyle = st.cls==='work' ? '#4747c2' : st.cls==='off' ? '#a56a00' : st.cls==='rest' ? '#0b7a6e' : '#7b8098'; ctx.fillText(st.short, x+w-20-tw+8, y+31.5);
-  ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+20, y+50); ctx.lineTo(x+w-20, y+50); ctx.stroke();
-  const showWrap = r.checkOut && r.wrapUp, max = showWrap ? 4 : 6;
-  ctx.font = '13px sans-serif';
-  if (!r.todos.length){ ctx.fillStyle = '#a3a8bd'; ctx.fillText('오늘 할 일이 아직 없어요', x+22, y+72); }
-  r.todos.slice(0, max).forEach((t, n) => {
-    const ly = y + 68 + n*22;
-    rr(x+22, ly-7, 14, 14, 4, t.done ? col : '#fff', t.done ? col : '#c5c9d8');
-    if (t.done){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+25,ly); ctx.lineTo(x+28,ly+3); ctx.lineTo(x+33,ly-3); ctx.stroke(); }
-    ctx.fillStyle = t.done ? '#a3a8bd' : '#23263a'; const tx = fit(t.text, w-70); ctx.fillText(tx, x+44, ly+1);
-    if (t.done){ ctx.strokeStyle='#a3a8bd'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x+44,ly+1); ctx.lineTo(x+44+ctx.measureText(tx).width,ly+1); ctx.stroke(); }
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+27, y+32, 7, 0, 7); ctx.fill();
+  ctx.font = '700 13px sans-serif'; const tw = ctx.measureText(st.short).width + 16;
+  rr(x+w-18-tw, y+20, tw, 25, 12.5, PILL[st.cls][0]); ctx.fillStyle = PILL[st.cls][1]; ctx.fillText(st.short, x+w-18-tw+8, y+33);
+  ctx.fillStyle = '#23263a'; ctx.font = '700 18px sans-serif'; ctx.fillText(fit(name, w-38-18-tw-10), x+40, y+33);
+  ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+20, y+54); ctx.lineTo(x+w-20, y+54); ctx.stroke();
+  const showWrap = r.checkOut && r.wrapUp, gap = 27, max = Math.max(1, Math.floor((h-74-(showWrap ? 50 : 8)) / gap));
+  const more = r.todos.length > max, shown = more ? max-1 : max;
+  ctx.font = '16px sans-serif';
+  if (!r.todos.length){ ctx.fillStyle = '#a3a8bd'; ctx.fillText('오늘 할 일이 아직 없어요', x+22, y+78); }
+  r.todos.slice(0, shown).forEach((t, n) => {
+    const ly = y + 76 + n*gap;
+    rr(x+22, ly-8, 16, 16, 4, t.done ? col : '#fff', t.done ? col : '#c5c9d8');
+    if (t.done){ ctx.strokeStyle='#fff'; ctx.lineWidth=2.2; ctx.beginPath(); ctx.moveTo(x+26,ly); ctx.lineTo(x+29,ly+3.5); ctx.lineTo(x+35,ly-3.5); ctx.stroke(); }
+    ctx.fillStyle = t.done ? '#a3a8bd' : '#23263a'; const tx = fit(t.text, w-72); ctx.fillText(tx, x+46, ly+1);
+    if (t.done){ ctx.strokeStyle='#a3a8bd'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x+46,ly+1); ctx.lineTo(x+46+ctx.measureText(tx).width,ly+1); ctx.stroke(); }
   });
-  if (r.todos.length > max){ ctx.fillStyle='#7b8098'; ctx.font='12px sans-serif'; ctx.fillText(`+ ${r.todos.length-max}개 더`, x+44, y+68+max*22); }
-  if (showWrap){ rr(x+18, y+h-52, w-36, 34, 8, '#f3f3fa'); ctx.fillStyle='#55597a'; ctx.font='12px sans-serif'; ctx.fillText(fit('🌙 '+r.wrapUp.replace(/\s+/g,' '), w-56), x+28, y+h-34); }
+  if (more){ ctx.fillStyle='#7b8098'; ctx.font='14px sans-serif'; ctx.fillText(`+ ${r.todos.length-shown}개 더`, x+46, y+76+shown*gap); }
+  if (showWrap){ rr(x+18, y+h-56, w-36, 38, 8, '#f3f3fa'); ctx.fillStyle='#55597a'; ctx.font='14px sans-serif'; ctx.fillText(fit('🌙 '+r.wrapUp.replace(/\s+/g,' '), w-56), x+28, y+h-36); }
 }
 function drawDesk(i){
-  const x = 390 + i*300, y = 350;
+  const x = 390 + i*300, y = LY.deskY;
   rr(x, y, 200, 78, 10, '#f3ede4', '#dccfbd');
   rr(x+70, y+14, 60, 38, 5, '#262a41'); rr(x+74, y+18, 52, 30, 3, '#8fd3ff'); rr(x+92, y+52, 16, 8, 2, '#aeb3c6');
   rr(x+20, y+22, 30, 38, 4, '#fff', '#e3e6ee'); ctx.fillStyle='#c98a5a'; ctx.beginPath(); ctx.arc(x+168, y+40, 10, 0, 7); ctx.fill(); ctx.fillStyle='#6b4226'; ctx.beginPath(); ctx.arc(x+168, y+40, 6, 0, 7); ctx.fill();
 }
 function drawAvatar(a, isMe){
   const {x, y} = a;
-  ctx.fillStyle = 'rgba(30,30,60,.15)'; ctx.beginPath(); ctx.ellipse(x, y+22, 18, 6, 0, 0, 7); ctx.fill();
-  rr(x-14, y-4, 28, 26, 10, a.color);
-  ctx.fillStyle = '#ffd9bf'; ctx.beginPath(); ctx.arc(x, y-18, 17, 0, 7); ctx.fill();
-  ctx.fillStyle = '#3a2f2a'; ctx.beginPath(); ctx.arc(x, y-22, 17, Math.PI, 0); ctx.fill(); rr(x-17, y-24, 34, 6, 3, '#3a2f2a');
-  ctx.fillStyle = '#23263a'; ctx.beginPath(); ctx.arc(x-6, y-15, 2.2, 0, 7); ctx.arc(x+6, y-15, 2.2, 0, 7); ctx.fill();
-  ctx.font = '700 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 16;
-  rr(x-tw/2, y-58, tw, 20, 10, 'rgba(35,38,58,.85)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-47.5);
+  ctx.fillStyle = 'rgba(30,30,60,.15)'; ctx.beginPath(); ctx.ellipse(x, y+25, 21, 7, 0, 0, 7); ctx.fill();
+  rr(x-16, y-4, 32, 30, 11, a.color);
+  ctx.fillStyle = '#ffd9bf'; ctx.beginPath(); ctx.arc(x, y-20, 20, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3a2f2a'; ctx.beginPath(); ctx.arc(x, y-25, 20, Math.PI, 0); ctx.fill(); rr(x-20, y-27, 40, 7, 3, '#3a2f2a');
+  ctx.fillStyle = '#23263a'; ctx.beginPath(); ctx.arc(x-7, y-16, 2.6, 0, 7); ctx.arc(x+7, y-16, 2.6, 0, 7); ctx.fill();
+  ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 18;
+  rr(x-tw/2, y-68, tw, 23, 11.5, 'rgba(35,38,58,.88)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-56);
   if (a.say){
-    ctx.font = '13px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 260), bw = ctx.measureText(t).width + 20;
-    rr(x-bw/2, y-90, bw, 26, 11, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, x, y-76.5);
+    ctx.font = '15px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 280), bw = ctx.measureText(t).width + 22;
+    const bx = Math.max(8, Math.min(W-8-bw, x-bw/2));
+    rr(bx, y-104, bw, 30, 12, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, y-88.5);
   }
 }
-let lastT = performance.now(), lastSent = 0, sentX = 0, sentY = 0;
+function stepTo(a, t, dt, speed){          // a를 목표 t 쪽으로 걸어가게 하고, 도착하면 true
+  const ex = t.x-a.x, ey = t.y-a.y, d = Math.hypot(ex, ey), s = speed*dt;
+  if (d <= s || d < 2){ a.x = t.x; a.y = t.y; return true; }
+  a.x += ex/d*s; a.y += ey/d*s; return false;
+}
+let lastT = performance.now();
 function frame(now){
   const dt = Math.min(.05, (now-lastT)/1000); lastT = now;
   if (me.name){
-    let dx = (keys.has('arrowright')||keys.has('d')) - (keys.has('arrowleft')||keys.has('a')), dy = (keys.has('arrowdown')||keys.has('s')) - (keys.has('arrowup')||keys.has('w'));
-    if (dx||dy){ me.tx = me.ty = null; keysMoved = true; }
-    else if (me.tx != null){ const ex = me.tx-me.x, ey = me.ty-me.y, d = Math.hypot(ex,ey); if (d < 4) me.tx = me.ty = null; else { dx = ex/d; dy = ey/d; } }
-    if (dx||dy){ const n = Math.hypot(dx,dy)||1; me.x = Math.max(30, Math.min(W-30, me.x + dx/n*240*dt)); me.y = Math.max(70, Math.min(H-34, me.y + dy/n*240*dt)); }
-    if (now-lastSent > 66 && (me.x!==sentX || me.y!==sentY)){ send({ t:'pos', x:Math.round(me.x), y:Math.round(me.y) }); lastSent = now; sentX = me.x; sentY = me.y; }
-    partner.x += (partner.rx-partner.x)*Math.min(1, dt*12); partner.y += (partner.ry-partner.y)*Math.min(1, dt*12);
+    const mt = spot(me.name, wantRest);
+    if (me.moving){ if (stepTo(me, mt, dt, 300)) me.moving = false; } else { me.x = mt.x; me.y = mt.y; }
+    const pt = spot(partner.name, partner.rest);
+    if (partner.snap){ partner.x = pt.x; partner.y = pt.y; partner.snap = false; } else stepTo(partner, pt, dt, 300);
 
     ctx.setTransform(scale,0,0,scale,0,0);
     drawFloor();
-    rr(310, 44, 660, 490, 20, '#e7e9f1');
-    ctx.fillStyle = '#9aa0b8'; ctx.font = '700 15px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('DESK ZONE', 330, 512);
+    rr(310, 44, 660, LY.zoneB-44, 20, '#e7e9f1');
     drawAttendance(); drawSummary();
-    const resting = wantRest;
-    rr(REST.x, REST.y, REST.w, REST.h, 18, resting ? '#d9f3ee' : '#fff', resting ? '#12a594' : '#e3e6ee');
-    rr(450, 628, 70, 54, 14, '#9fb0d0'); rr(760, 628, 70, 54, 14, '#9fb0d0');
-    ctx.textAlign = 'center'; ctx.fillStyle = resting ? '#0b7a6e' : '#7b8098'; ctx.font = '700 17px sans-serif'; ctx.fillText('☕ 쉬는 공간', 640, 644);
-    ctx.font = '13px sans-serif'; ctx.fillText(resting ? '쉬는 중 — 근무 시간이 멈춰 있어요' : '여기 들어오면 근무 시간이 멈춰요', 640, 670);
+    const meRest = wantRest, anyRest = meRest || (partner.online && partner.rest), cy = REST.y+REST.h/2;
+    rr(REST.x, REST.y, REST.w, REST.h, 18, anyRest ? '#d9f3ee' : '#fff', anyRest ? '#12a594' : '#e3e6ee');
+    rr(450, cy-30, 70, 60, 14, '#9fb0d0'); rr(760, cy-30, 70, 60, 14, '#9fb0d0');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = anyRest ? '#0b7a6e' : '#7b8098'; ctx.font = '700 20px sans-serif'; ctx.fillText('☕ 쉬는 공간', 640, cy-12);
+    ctx.font = '15px sans-serif'; ctx.fillText(meRest ? '쉬는 중 · 근무 시간 멈춤' : '여기서는 근무 시간이 멈춰요', 640, cy+16);
     const names = [me.name, partner.name].filter(Boolean).sort();
     for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
     const list = [[me,true]]; if (partner.online && partner.name) list.push([partner,false]);
