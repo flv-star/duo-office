@@ -67,7 +67,7 @@
   .wrap b{display:block;margin-bottom:4px;font-size:12px;color:var(--sub)}
 
   .stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:10px 10px 76px}
-  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(40,40,90,.10);background:#fff;cursor:pointer}
+  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(40,40,90,.10);background:#fff}
   .bar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:8px;padding:8px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(40,40,90,.16)}
   .bar button{background:#f1f2f7;color:var(--text);padding:10px 14px;white-space:nowrap}
   .bar button.on{background:#dff5ea;color:#12734b}
@@ -104,7 +104,11 @@
   #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
   #mapWrap .undone{position:absolute;left:68%;top:71%;width:29.6%;height:27.6%;background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 10px rgba(40,40,90,.08)}
   .undone h4{margin:0;padding:9px 12px;background:#3d4263;color:#fff;font-size:15px}
-  #undoneBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+  #undoneBody,#goalBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+  .goal .ucol{display:flex;flex-direction:column}
+  .goal textarea{flex:1;min-height:0;resize:none;font-size:14px;line-height:1.5;padding:7px 9px}
+  .gtext{white-space:pre-wrap;font-size:14px;line-height:1.5;word-break:break-word}
+  .bar .menu small{color:var(--sub);font-weight:400;margin-left:6px;font-size:11px}
   .ucol{padding:8px 10px;overflow:auto;min-width:0}
   .ucol + .ucol{border-left:1px solid var(--line)}
   .uh{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
@@ -199,7 +203,8 @@
           <div id="chatList"></div>
           <div class="row"><input id="chatInput" maxlength="500" placeholder="💬 메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
         </div>
-        <div class="undone"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
+        <div class="undone" id="undoneBox"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
+        <div class="undone goal" id="goalBox"><h4>🎯 이번 달 목표</h4><div id="goalBody"></div></div>
       </div>
       <div class="bar">
         <span class="grp"><button id="bMic">🎤 마이크</button><button class="pick" id="bMicPick" title="마이크 선택">▾</button></span>
@@ -207,7 +212,8 @@
         <div class="menu hidden" id="devMenu"></div>
         <button id="bScreen">🖥️ 화면 공유</button>
         <span class="sep"></span>
-        <button id="bRest">☕ 쉬러 가기</button>
+        <button id="bStatus">💼 업무 중 ▾</button>
+        <div class="menu hidden" id="statusMenu"></div>
         <span class="sep"></span>
         <button id="bIn" class="in">☀️ 출근</button>
         <button id="bOut" class="out">🌙 퇴근</button>
@@ -273,8 +279,11 @@ function toast(msg){ const t=document.createElement('div'); t.className='toast';
 /* ───────── 상태 ───────── */
 const W = 1280; let H = 760;
 const SEATS = [{x:490,y:468},{x:790,y:468}];
-const REST = { x:420, y:600, w:440, h:110 };
-const inRest = a => a.x >= REST.x && a.x <= REST.x+REST.w && a.y >= REST.y-14 && a.y <= REST.y+REST.h+6;
+const STATUSES = {          // pause: true면 그 상태인 동안 순 근무 시간이 멈춘다
+  work:{ icon:'💼', label:'업무 중', pause:false }, rest:{ icon:'☕', label:'쉬는 중', pause:true }, meal:{ icon:'🍚', label:'식사 중', pause:true },
+  move:{ icon:'🚗', label:'이동 중', pause:false }, out:{ icon:'🏃', label:'외근 중', pause:false },
+};
+const statusKey = r => (r && Object.hasOwn(STATUSES, r.status)) ? r.status : 'work';
 const me = { name:'', color:COLORS[0], x:490, y:468, tx:null, ty:null };
 const partner = { name:'', color:COLORS[1], x:790, y:468, rx:790, ry:468, online:false };
 let room = '', records = {}, chat = [], unread = 0, today = dateKey();
@@ -315,7 +324,7 @@ function seatOf(name){ const s = [me.name, partner.name].filter(Boolean).sort();
   $('#jGo').onclick = go;
   [$('#jName'), $('#jRoom')].forEach(e => e.addEventListener('keydown', ev => { if (ev.key==='Enter') go(); }));
 })();
-function sitDown(){ wantRest = false; me.moving = false; updateRestBtn(); }
+function sitDown(){ updateStatusBtn(); }
 
 /* ───────── 연결 (PeerJS) ───────── */
 function setConn(s){ connState = s; renderHeader(); }
@@ -343,7 +352,7 @@ function setupConn(c){
   c.on('open', () => {
     if (conn && conn !== c) { try { conn.close(); } catch {} }
     conn = c; pending = null; lastSeen = Date.now(); partner.online = true; setConn('connected');
-    send({ t:'hello', name:me.name, color:me.color, rest:wantRest, records:Object.values(records), chat:chat.slice(-300) });
+    send({ t:'hello', name:me.name, color:me.color, records:Object.values(records), chat:chat.slice(-300) });
     Object.keys(local).forEach(callOut);
   });
   c.on('data', d => { if (c===conn){ lastSeen = Date.now(); handle(d); } });
@@ -368,13 +377,13 @@ function handle(d){
     const nm = String(d.name||'').slice(0,10);
     if (nm === me.name) toast('두 사람 이름이 같아요. 서로 다른 이름으로 들어와 주세요!');
     const first = partner.name !== nm; partner.name = nm; if (COLORS.includes(d.color)) partner.color = d.color;
-    partner.rest = d.rest ?? (+d.y > 540); partner.snap = true;
     (d.records||[]).forEach(mergeRec); if (mergeChat(d.chat)) renderChat(); save();
     toast(`${nm}님이 들어왔어요 👋`); render();
   } else if (d.t === 'rec'){
     const before = records[d.r?.date+'|'+d.r?.user] || {};
     mergeRec(d.r); save();
     if (d.r?.date === today){
+      if (d.r.checkIn && !d.r.checkOut && before.checkIn && statusKey(before) !== statusKey(d.r)){ const s = STATUSES[statusKey(d.r)]; toast(`${s.icon} ${d.r.user}님: ${s.label}`); }
       if (!before.checkIn && d.r.checkIn) toast(`☀️ ${d.r.user}님 출근! (${hm(d.r.checkIn)})`);
       if (!before.checkOut && d.r.checkOut) toast(`🌙 ${d.r.user}님 퇴근! (${hm(d.r.checkOut)})`);
     }
@@ -384,7 +393,7 @@ function handle(d){
       const m = chat.find(c => c.id === d.m.id); save(); renderChat();
       if (document.hidden){ unread++; document.title = `(${unread}) 월 매출 1억 사무실`; }
     }
-  } else if (d.t === 'pos'){ partner.rest = d.rest ?? (+d.y > 540); }
+  }
   else if (d.t === 'stop'){ if (d.kind in remote){ remote[d.kind] = false; renderBadges(); } if (d.kind==='mic') $('#remoteAudio').srcObject = null; else removeTile('p-'+d.kind); }
   else if (d.t === 'bye'){ dropConn(); }
 }
@@ -670,6 +679,38 @@ $('#undoneBody').addEventListener('click', e => {
   const r = rec(me.name); r.todos.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), text, done:false }); touch(r);
 });
 
+/* ───────── 이번 달 목표 (각자) ───────── */
+const monthKey = () => today.slice(0, 7);
+function goalRec(name){          // 출퇴근 기록과 같은 방식으로 저장·동기화되도록 records에 함께 둔다
+  const date = 'goal-' + monthKey(), k = date + '|' + name;
+  return records[k] || (records[k] = { date, user:name, text:'', checkIn:null, checkOut:null, todos:[], wrapUp:'', updatedAt:0 });
+}
+let goalT = 0;
+function saveGoal(){
+  clearTimeout(goalT); const ta = $('#goalMine'); if (!ta) return;
+  const r = goalRec(me.name), v = ta.value.trim(); if ((r.text||'') === v) return;
+  r.text = v; touch(r);
+}
+function renderGoals(){
+  const names = [me.name, partner.name].filter(Boolean).sort(), body = $('#goalBody'), key = monthKey() + '|' + names.join('|') + '|' + partner.color;
+  $('#goalBox h4').textContent = `🎯 ${+monthKey().slice(5)}월 목표`;
+  if (body.dataset.key !== key){
+    if (body.dataset.key) saveGoal();
+    body.dataset.key = key;
+    body.innerHTML = [0,1].map(i => {
+      const n = names[i]; if (!n) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
+      const mine = n === me.name;
+      return `<div class="ucol"><div class="uh"><i class="dot" style="background:${mine ? me.color : partner.color}"></i>${esc(n)}</div>`
+        + (mine ? '<textarea id="goalMine" maxlength="300" placeholder="이번 달 목표를 적어보세요"></textarea>' : '<div class="gtext" id="goalP"></div>') + '</div>';
+    }).join('');
+    const ta = $('#goalMine'); ta.value = goalRec(me.name).text || '';
+    ta.addEventListener('input', () => { clearTimeout(goalT); goalT = setTimeout(saveGoal, 700); });
+    ta.addEventListener('blur', saveGoal);
+  }
+  const gp = $('#goalP'); if (gp){ const t = goalRec(partner.name).text; gp.textContent = t || '아직 목표를 적지 않았어요'; gp.classList.toggle('empty', !t); }
+  const ta = $('#goalMine'); if (ta && document.activeElement !== ta) ta.value = goalRec(me.name).text || '';
+}
+
 /* ───────── 채팅 ───────── */
 function mergeChat(list){          // 새로 들어온 메시지가 있으면 true
   let added = false;
@@ -705,21 +746,21 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden){ unr
 /* ───────── 화면 그리기 (DOM) ───────── */
 function statusOf(r){
   const n = hms(netMs(r));
-  return r.checkOut ? { cls:'off', text:`퇴근 ${hm(r.checkOut)} · 순 근무 ${n}`, short:`퇴근 · ${n}` }
-       : r.breakStart ? { cls:'rest', text:`☕ 휴식 중 · ${n}`, short:`휴식 중 · ${n}` }
-       : r.checkIn ? { cls:'work', text:`근무 중 · ${n}`, short:`근무 ${n}` }
-       : { cls:'', text:'출근 전', short:'출근 전' };
+  if (r.checkOut) return { cls:'off', text:`퇴근 ${hm(r.checkOut)} · 순 근무 ${n}`, short:`퇴근 · ${n}`, label:'퇴근' };
+  if (!r.checkIn) return { cls:'', text:'출근 전', short:'출근 전', label:'출근 전' };
+  const s = STATUSES[statusKey(r)];
+  return { cls: s.pause ? 'rest' : 'work', text:`${s.icon} ${s.label} · ${n}`, short:`${s.label} · ${n}`, label:s.label };
 }
 function renderTimer(){
   const r = rec(me.name), resting = r.breakStart && !r.checkOut;
   $('#netTime').textContent = hms(netMs(r)); $('#netTime').className = 'net' + (resting ? ' rest' : '');
   $('#netSub').textContent = !r.checkIn ? '출근을 누르면 시간이 흐르기 시작해요. 쉬는 공간에 가면 멈춰요.'
-    : `출근 ${hm(r.checkIn)} · 휴식 ${dur(breakMs(r))}` + (r.checkOut ? ` · 퇴근 ${hm(r.checkOut)}` : resting ? ' · ☕ 휴식 중이라 멈춤' : '');
+    : `출근 ${hm(r.checkIn)} · 휴식 ${dur(breakMs(r))}` + (r.checkOut ? ` · 퇴근 ${hm(r.checkOut)}` : resting ? ' · 지금은 멈춤' : '');
 }
 function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/종료
   const r = rec(me.name); if (!r.checkIn || r.checkOut) return;
-  const rest = wantRest, now = Date.now();      // 탭이 뒤에 있어도 바로 반영되도록 위치가 아니라 의도로 판단
-  if (rest && !r.breakStart){ r.breakStart = now; touch(r); toast('☕ 휴식 시작 — 근무 시간이 멈췄어요'); }
+  const s = STATUSES[statusKey(r)], rest = s.pause, now = Date.now();
+  if (rest && !r.breakStart){ r.breakStart = now; touch(r); toast(`${s.icon} ${s.label} — 근무 시간이 멈췄어요`); }
   else if (!rest && r.breakStart){ r.breakMs = (r.breakMs||0) + Math.max(0, now - r.breakStart); r.breakStart = null; touch(r); toast('💪 다시 근무 시작!'); }
 }
 function renderHeader(){
@@ -733,7 +774,7 @@ function renderHeader(){
 function wrapHtml(r){ return r.wrapUp ? `<div class="wrap"><b>🌙 마무리한 일</b>${esc(r.wrapUp)}</div>` : ''; }
 function render(){
   if (!me.name) return;
-  renderHeader(); renderTimer(); renderUndone(); renderBadges();
+  renderHeader(); renderTimer(); renderUndone(); renderBadges(); renderGoals(); updateStatusBtn();
   const pn = partner.name || '동료';
   $('#slot-p-cam em').textContent = `📷 ${pn} 카메라`; $('#slot-me-cam em').textContent = '📷 내 카메라';
   $('#slot-p-screen em').textContent = `🖥️ ${pn} 화면 공유`; $('#slot-me-screen em').textContent = '🖥️ 내 화면 공유';
@@ -761,14 +802,13 @@ setInterval(() => {
 
 /* ───────── 사무실 맵 (캔버스) ───────── */
 const cv = $('#cv'), ctx = cv.getContext('2d');
-let scale = 1, wantRest = false;
+let scale = 1;
 const LY = {};
 function layout(){          // 맵 높이(H)가 창에 맞춰 늘어나면 그만큼 패널·모니터·아래 칸을 키운다
   const e = H-760, e1 = Math.round(e*0.6), e2 = e-e1;
   LY.panelH = 460+e1; LY.zoneB = 534+e1; LY.boardH = 214+Math.round(e1*0.65);
   LY.deskY = 66+LY.boardH+70; SEATS[0].y = SEATS[1].y = LY.deskY+118;
   LY.bandY = 540+e1; LY.bandH = 208+e2;
-  REST.y = LY.bandY+30; REST.h = LY.bandH-60;
 }
 function resize(){
   const st = $('#stage'), aw = st.clientWidth-20, ah = st.clientHeight-86;
@@ -777,21 +817,25 @@ function resize(){
   const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
   cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px';
   cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
-  for (const [sel, x] of [['#mapWrap .chat', 28], ['#mapWrap .undone', 872]]){
-    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (380/W*100)+'%'; el.top = (LY.bandY/H*100)+'%'; el.height = (LY.bandH/H*100)+'%';
+  for (const [sel, x, w] of [['#mapWrap .chat', 28, 380], ['#undoneBox', 420, 440], ['#goalBox', 872, 380]]){
+    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (LY.bandY/H*100)+'%'; el.height = (LY.bandH/H*100)+'%';
   }
 }
 addEventListener('resize', resize); layout();
-const spot = (name, rest) => rest ? { x: seatOf(name) === 0 ? 485 : 795, y: REST.y+REST.h/2+10 } : SEATS[seatOf(name)];
-function updateRestBtn(){ const b = $('#bRest'); b.textContent = wantRest ? '💺 자리로 돌아가기' : '☕ 쉬러 가기'; b.className = wantRest ? 'on' : ''; }
-function goTo(where){          // 갈 수 있는 곳은 내 의자와 쉬는 공간 두 곳뿐
-  wantRest = where === 'rest'; me.moving = true; updateRestBtn(); syncBreak(); send({ t:'pos', rest:wantRest });
+function updateStatusBtn(){
+  if (!me.name) return;
+  const s = STATUSES[statusKey(rec(me.name))], b = $('#bStatus'); b.textContent = `${s.icon} ${s.label} ▾`; b.className = s.pause ? 'on' : '';
 }
-cv.addEventListener('click', e => {
-  const b = cv.getBoundingClientRect(), x = (e.clientX-b.left)/b.width*W, y = (e.clientY-b.top)/b.height*H;
-  if (inRest({ x, y })) goTo('rest'); else if (x >= 310 && x <= 970 && y >= 44 && y <= LY.zoneB) goTo('seat');
-});
-$('#bRest').onclick = () => goTo(wantRest ? 'seat' : 'rest');
+function setStatus(k){ const r = rec(me.name); if (statusKey(r) === k) return; r.status = k; touch(r); syncBreak(); }
+$('#bStatus').onclick = () => {
+  const m = $('#statusMenu'); if (!m.classList.contains('hidden')) return m.classList.add('hidden');
+  const cur = statusKey(rec(me.name));
+  m.innerHTML = '<b>지금 내 상태</b>' + Object.entries(STATUSES).map(([k, s]) =>
+    `<button data-st="${k}" class="${k===cur?'cur':''}">${k===cur?'✓ ':''}${s.icon} ${s.label}<small>${s.pause ? '근무 시간 멈춤' : '근무 시간 계속'}</small></button>`).join('');
+  m.style.left = $('#bStatus').offsetLeft + 'px'; m.classList.remove('hidden');
+};
+$('#statusMenu').addEventListener('click', e => { const k = e.target.closest('[data-st]')?.dataset.st; if (!k) return; $('#statusMenu').classList.add('hidden'); setStatus(k); });
+document.addEventListener('mousedown', e => { if (!e.target.closest('#statusMenu, #bStatus')) $('#statusMenu').classList.add('hidden'); });
 
 function rr(x,y,w,h,r,fill,stroke){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); if (fill){ ctx.fillStyle=fill; ctx.fill(); } if (stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); } }
 function fit(text, maxW){ if (ctx.measureText(text).width <= maxW) return text; let s = text; while (s.length>1 && ctx.measureText(s+'…').width > maxW) s = s.slice(0,-1); return s+'…'; }
@@ -838,7 +882,7 @@ function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
     if (i === 1) divider(x, w, by-12);
     if (!name){ waiting(x, w, by+bh/2-10); continue; }
     const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
-    personHead(x, by, w, name, col, { work:'근무 중', rest:'휴식 중', off:'퇴근', '':'출근 전' }[st.cls], st.cls);
+    personHead(x, by, w, name, col, st.label, st.cls);
     const done = r.todos.filter(t => t.done).length;
     rowsOf(x, w, by+52, Math.min(38, (bh-72)/5), [['출근', r.checkIn ? hm(r.checkIn) : '—'], ['퇴근', r.checkOut ? hm(r.checkOut) : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true],
       ['휴식', r.checkIn ? dur(breakMs(r)) : '—'], ['할 일', r.todos.length ? `${done}/${r.todos.length} 완료` : '—']], col);
@@ -908,35 +952,28 @@ function drawAvatar(a, isMe){
   ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 18;
   rr(x-tw/2, y-68, tw, 23, 11.5, 'rgba(35,38,58,.88)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-56);
+  let top = y-68;          // 이름표 위: 상태 표시(업무 중이 아닐 때), 그 위에 마지막 채팅
+  const r = records[today+'|'+a.name], sk = r && r.checkIn && !r.checkOut ? statusKey(r) : 'work';
+  if (sk !== 'work'){
+    const s = STATUSES[sk], t = `${s.icon} ${s.label}`, bw = ctx.measureText(t).width + 22;
+    rr(x-bw/2, y-98, bw, 26, 13, s.pause ? '#12a594' : '#f5a524'); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y-84.5); top = y-98;
+  }
   if (a.say){
     ctx.font = '15px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 280), bw = ctx.measureText(t).width + 22;
     const bx = Math.max(8, Math.min(W-8-bw, x-bw/2));
-    rr(bx, y-104, bw, 30, 12, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, y-88.5);
+    rr(bx, top-36, bw, 30, 12, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, top-20.5);
   }
-}
-function stepTo(a, t, dt, speed){          // a를 목표 t 쪽으로 걸어가게 하고, 도착하면 true
-  const ex = t.x-a.x, ey = t.y-a.y, d = Math.hypot(ex, ey), s = speed*dt;
-  if (d <= s || d < 2){ a.x = t.x; a.y = t.y; return true; }
-  a.x += ex/d*s; a.y += ey/d*s; return false;
 }
 let lastT = performance.now();
 function frame(now){
   const dt = Math.min(.05, (now-lastT)/1000); lastT = now;
   if (me.name){
-    const mt = spot(me.name, wantRest);
-    if (me.moving){ if (stepTo(me, mt, dt, 300)) me.moving = false; } else { me.x = mt.x; me.y = mt.y; }
-    const pt = spot(partner.name, partner.rest);
-    if (partner.snap){ partner.x = pt.x; partner.y = pt.y; partner.snap = false; } else stepTo(partner, pt, dt, 300);
+    for (const a of [me, partner]){ const t = SEATS[seatOf(a.name)]; a.x = t.x; a.y = t.y; }
 
     ctx.setTransform(scale,0,0,scale,0,0);
     drawFloor();
     rr(310, 44, 660, LY.zoneB-44, 20, '#e7e9f1');
     drawAttendance(); drawSummary();
-    const meRest = wantRest, anyRest = meRest || (partner.online && partner.rest), cy = REST.y+REST.h/2;
-    rr(REST.x, REST.y, REST.w, REST.h, 18, anyRest ? '#d9f3ee' : '#fff', anyRest ? '#12a594' : '#e3e6ee');
-    rr(450, cy-30, 70, 60, 14, '#9fb0d0'); rr(760, cy-30, 70, 60, 14, '#9fb0d0');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = anyRest ? '#0b7a6e' : '#7b8098'; ctx.font = '700 20px sans-serif'; ctx.fillText('☕ 쉬는 공간', 640, cy-12);
-    ctx.font = '15px sans-serif'; ctx.fillText(meRest ? '쉬는 중 · 근무 시간 멈춤' : '여기서는 근무 시간이 멈춰요', 640, cy+16);
     const names = [me.name, partner.name].filter(Boolean).sort();
     for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
     const list = [[me,true]]; if (partner.online && partner.name) list.push([partner,false]);
