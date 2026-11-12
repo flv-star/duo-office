@@ -103,23 +103,25 @@
   #mapWrap canvas{display:block}
   #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
   #mapWrap .undone{position:absolute;left:68%;top:71%;width:29.6%;height:27.6%;background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 10px rgba(40,40,90,.08)}
-  .undone h4{margin:0;padding:9px 12px;background:#3d4263;color:#fff;font-size:15px}
+  .undone h4{margin:0;padding:10px 14px;background:#3d4263;color:#fff;font-size:16px}
   #undoneBody,#goalBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
-  .goal .ucol{display:flex;flex-direction:column}
-  .goal textarea{flex:1;min-height:0;resize:none;font-size:14px;line-height:1.5;padding:7px 9px}
-  .gtext{white-space:pre-wrap;font-size:14px;line-height:1.5;word-break:break-word}
+  #goalBody{grid-template-columns:1fr;grid-template-rows:1.25fr 1fr}
+  .goal .ucol{display:flex;flex-direction:column;padding:10px 12px}
+  .goal .ucol + .ucol{border-left:0;border-top:1px solid var(--line)}
+  .goal textarea{flex:1;min-height:0;resize:none;font-size:16px;line-height:1.55;padding:9px 11px}
+  .gtext{white-space:pre-wrap;font-size:16px;line-height:1.55;word-break:break-word}
   .bar .menu small{color:var(--sub);font-weight:400;margin-left:6px;font-size:11px}
   .ucol{padding:8px 10px;overflow:auto;min-width:0}
   .ucol + .ucol{border-left:1px solid var(--line)}
-  .uh{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .uh{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
   .uh span{font-weight:500;color:var(--sub);font-size:11px}
-  .ui{display:flex;gap:4px;align-items:flex-start;font-size:14px;line-height:1.4;padding:4px 0;border-bottom:1px dashed var(--line)}
+  .ui{display:flex;gap:6px;align-items:flex-start;font-size:15.5px;line-height:1.45;padding:6px 0;border-bottom:1px dashed var(--line)}
   .ui span{flex:1;word-break:break-word}
-  .ui button{padding:0 6px;background:var(--accent-soft);color:var(--accent);border-radius:6px;font-size:13px;flex:none}
-  #mapWrap #chatList{padding:8px;gap:5px;font-size:14px}
-  #mapWrap .chat .row{padding:6px;gap:6px}
-  #mapWrap .chat input{padding:6px 9px}
-  #mapWrap .chat button{padding:6px 11px}
+  .ui button{padding:1px 9px;background:var(--accent-soft);color:var(--accent);border-radius:6px;font-size:13px;flex:none}
+  #mapWrap #chatList{padding:10px;gap:6px;font-size:15.5px}
+  #mapWrap .chat .row{padding:8px;gap:6px}
+  #mapWrap .chat input{padding:9px 11px;font-size:15px;min-width:0}
+  #mapWrap .chat button{padding:9px 13px}
   .chat{flex:1;min-height:160px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .chat h3{margin:0;padding:10px 12px;border-bottom:1px solid var(--line)}
   #chatList{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
@@ -697,8 +699,7 @@ function renderGoals(){
   if (body.dataset.key !== key){
     if (body.dataset.key) saveGoal();
     body.dataset.key = key;
-    body.innerHTML = [0,1].map(i => {
-      const n = names[i]; if (!n) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
+    body.innerHTML = [me.name, partner.name].map(n => { if (!n) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
       const mine = n === me.name;
       return `<div class="ucol"><div class="uh"><i class="dot" style="background:${mine ? me.color : partner.color}"></i>${esc(n)}</div>`
         + (mine ? '<textarea id="goalMine" maxlength="300" placeholder="이번 달 목표를 적어보세요"></textarea>' : '<div class="gtext" id="goalP"></div>') + '</div>';
@@ -805,10 +806,10 @@ const cv = $('#cv'), ctx = cv.getContext('2d');
 let scale = 1;
 const LY = {};
 function layout(){          // 맵 높이(H)가 창에 맞춰 늘어나면 그만큼 패널·모니터·아래 칸을 키운다
-  const e = H-760, e1 = Math.round(e*0.6), e2 = e-e1;
-  LY.panelH = 460+e1; LY.zoneB = 534+e1; LY.boardH = 214+Math.round(e1*0.65);
+  const e1 = Math.round((H-760)*0.45);
+  LY.panelH = 240; LY.sideY = 62+LY.panelH+10; LY.boardH = 200+e1;
   LY.deskY = 66+LY.boardH+70; SEATS[0].y = SEATS[1].y = LY.deskY+118;
-  LY.bandY = 540+e1; LY.bandH = 208+e2;
+  LY.zoneB = SEATS[0].y+46; LY.bandY = LY.zoneB+8;
 }
 function resize(){
   const st = $('#stage'), aw = st.clientWidth-20, ah = st.clientHeight-86;
@@ -817,8 +818,8 @@ function resize(){
   const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
   cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px';
   cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
-  for (const [sel, x, w] of [['#mapWrap .chat', 28, 380], ['#undoneBox', 420, 440], ['#goalBox', 872, 380]]){
-    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (LY.bandY/H*100)+'%'; el.height = (LY.bandH/H*100)+'%';
+  for (const [sel, x, y, w] of [['#mapWrap .chat', 28, LY.sideY, 300], ['#undoneBox', 340, LY.bandY, 600], ['#goalBox', 952, LY.sideY, 300]]){
+    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (y/H*100)+'%'; el.height = ((H-12-y)/H*100)+'%';
   }
 }
 addEventListener('resize', resize); layout();
@@ -875,17 +876,15 @@ function rowsOf(x, w, y0, gap, rows, col){
 function waiting(x, w, y){ ctx.fillStyle = '#a3a8bd'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('동료를 기다리는 중…', x+w/2, y); }
 function divider(x, w, y){ ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+16, y); ctx.lineTo(x+w-16, y); ctx.stroke(); }
 function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
-  const x = 28, y = 62, w = 270, h = LY.panelH, bh = (h-62)/2; panel(x,y,w,h,'📋 오늘 출근 현황');
+  const x = 28, y = 62, w = 300, h = LY.panelH, bh = (h-56)/2; panel(x,y,w,h,'📋 오늘 출근 현황');
   const names = [me.name, partner.name].filter(Boolean).sort();
   for (let i = 0; i < 2; i++){
-    const by = y+62+i*bh, name = names[i];
-    if (i === 1) divider(x, w, by-12);
+    const by = y+58+i*bh, name = names[i];
+    if (i === 1) divider(x, w, by-10);
     if (!name){ waiting(x, w, by+bh/2-10); continue; }
     const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
     personHead(x, by, w, name, col, st.label, st.cls);
-    const done = r.todos.filter(t => t.done).length;
-    rowsOf(x, w, by+52, Math.min(38, (bh-72)/5), [['출근', r.checkIn ? hm(r.checkIn) : '—'], ['퇴근', r.checkOut ? hm(r.checkOut) : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true],
-      ['휴식', r.checkIn ? dur(breakMs(r)) : '—'], ['할 일', r.todos.length ? `${done}/${r.todos.length} 완료` : '—']], col);
+    rowsOf(x, w, by+44, 26, [[r.checkOut ? '출근 ~ 퇴근' : '출근', r.checkIn ? hm(r.checkIn) + (r.checkOut ? ' ~ ' + hm(r.checkOut) : '') : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true]], col);
   }
 }
 function weekData(){
@@ -894,18 +893,16 @@ function weekData(){
   return { names, days, get:(d, n) => { const r = records[dateKey(d)+'|'+n]; return r ? netMs(r) : 0; } };
 }
 function drawSummary(){             // 오른쪽 벽: 최근 7일 요약 (큰 숫자)
-  const x = 982, y = 62, w = 270, h = LY.panelH, bh = (h-62)/2; panel(x,y,w,h,'🏆 최근 7일 요약');
+  const x = 952, y = 62, w = 300, h = LY.panelH, bh = (h-56)/2; panel(x,y,w,h,'🏆 최근 7일 요약');
   const { names, days, get } = weekData();
   for (let i = 0; i < 2; i++){
-    const by = y+62+i*bh, n = names[i];
-    if (i === 1) divider(x, w, by-12);
+    const by = y+58+i*bh, n = names[i];
+    if (i === 1) divider(x, w, by-10);
     if (!n){ waiting(x, w, by+bh/2-10); continue; }
     const col = n===me.name ? me.color : partner.color, vals = days.map(d => get(d, n));
-    const total = vals.reduce((a,b) => a+b, 0), worked = vals.filter(v => v > 0).length, best = Math.max(...vals), bd = days[vals.indexOf(best)];
-    personHead(x, by, w, n, col);
-    ctx.textAlign = 'left'; ctx.fillStyle = '#7b8098'; ctx.font = '14px sans-serif'; ctx.fillText('7일 합계', x+22, by+46);
-    ctx.fillStyle = col; ctx.font = '800 32px sans-serif'; ctx.fillText(dur(total), x+22, by+80);
-    rowsOf(x, w, by+120, Math.min(38, (bh-132)/3), [['하루 평균', worked ? dur(total/worked) : '—'], ['출근한 날', worked + '일'], ['최고 기록', best > 0 ? `${bd.getMonth()+1}/${bd.getDate()} · ${dur(best)}` : '—']], col);
+    const total = vals.reduce((a,b) => a+b, 0), worked = vals.filter(v => v > 0).length;
+    personHead(x, by, w, n, col, worked + '일 출근', '');
+    rowsOf(x, w, by+44, 26, [['하루 평균', worked ? dur(total/worked) : '—'], ['7일 합계', dur(total), true]], col);
   }
 }
 function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
@@ -972,7 +969,7 @@ function frame(now){
 
     ctx.setTransform(scale,0,0,scale,0,0);
     drawFloor();
-    rr(310, 44, 660, LY.zoneB-44, 20, '#e7e9f1');
+    rr(340, 44, 600, LY.zoneB-44, 20, '#e7e9f1');
     drawAttendance(); drawSummary();
     const names = [me.name, partner.name].filter(Boolean).sort();
     for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
