@@ -98,6 +98,16 @@
   #mapWrap{position:relative}
   #mapWrap canvas{display:block}
   #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
+  #mapWrap .undone{position:absolute;left:68%;top:71%;width:29.6%;height:27.6%;background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 10px rgba(40,40,90,.08)}
+  .undone h4{margin:0;padding:8px 12px;background:#3d4263;color:#fff;font-size:13px}
+  #undoneBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
+  .ucol{padding:8px 10px;overflow:auto;min-width:0}
+  .ucol + .ucol{border-left:1px solid var(--line)}
+  .uh{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .uh span{font-weight:500;color:var(--sub);font-size:11px}
+  .ui{display:flex;gap:4px;align-items:flex-start;font-size:12.5px;line-height:1.4;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .ui span{flex:1;word-break:break-word}
+  .ui button{padding:0 6px;background:var(--accent-soft);color:var(--accent);border-radius:6px;font-size:13px;flex:none}
   #mapWrap #chatList{padding:8px;gap:5px;font-size:13px}
   #mapWrap .chat .row{padding:6px;gap:6px}
   #mapWrap .chat input{padding:6px 9px}
@@ -185,13 +195,16 @@
           <div id="chatList"></div>
           <div class="row"><input id="chatInput" maxlength="500" placeholder="💬 메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
         </div>
+        <div class="undone"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
       </div>
-      <div class="hint">방향키 / WASD 또는 클릭으로 이동</div>
+      <div class="hint">쉬는 공간이나 책상을 클릭하면 이동해요</div>
       <div class="bar">
         <span class="grp"><button id="bMic">🎤 마이크</button><button class="pick" id="bMicPick" title="마이크 선택">▾</button></span>
         <span class="grp"><button id="bCam">📷 카메라</button><button class="pick" id="bCamPick" title="카메라 선택">▾</button></span>
         <div class="menu hidden" id="devMenu"></div>
         <button id="bScreen">🖥️ 화면 공유</button>
+        <span class="sep"></span>
+        <button id="bRest">☕ 쉬러 가기</button>
         <span class="sep"></span>
         <button id="bIn" class="in">☀️ 출근</button>
         <button id="bOut" class="out">🌙 퇴근</button>
@@ -299,7 +312,7 @@ function seatOf(name){ const s = [me.name, partner.name].filter(Boolean).sort();
   $('#jGo').onclick = go;
   [$('#jName'), $('#jRoom')].forEach(e => e.addEventListener('keydown', ev => { if (ev.key==='Enter') go(); }));
 })();
-function sitDown(){ const s = SEATS[seatOf(me.name)]; me.x=s.x; me.y=s.y; me.tx=me.ty=null; }
+function sitDown(){ const s = SEATS[seatOf(me.name)]; me.x=s.x; me.y=s.y; me.tx=me.ty=null; wantRest = false; updateRestBtn(); }
 
 /* ───────── 연결 (PeerJS) ───────── */
 function setConn(s){ connState = s; renderHeader(); }
@@ -353,7 +366,7 @@ function handle(d){
     const first = partner.name !== nm; partner.name = nm; if (COLORS.includes(d.color)) partner.color = d.color;
     partner.x = partner.rx = +d.x||790; partner.y = partner.ry = +d.y||468;
     (d.records||[]).forEach(mergeRec); if (mergeChat(d.chat)) renderChat(); save();
-    if (first && !keysMoved) sitDown();
+    if (first){ if (wantRest) goTo('rest'); else sitDown(); }
     toast(`${nm}님이 들어왔어요 👋`); render();
   } else if (d.t === 'rec'){
     const before = records[d.r?.date+'|'+d.r?.user] || {};
@@ -366,7 +379,6 @@ function handle(d){
   } else if (d.t === 'chat'){
     if (mergeChat([d.m])){
       const m = chat.find(c => c.id === d.m.id); save(); renderChat();
-      partner.say = { text:m.text, until:Date.now()+5000 };
       if (document.hidden){ unread++; document.title = `(${unread}) 월 매출 1억 사무실`; }
     }
   } else if (d.t === 'pos'){ partner.rx = +d.x||0; partner.ry = +d.y||0; }
@@ -624,6 +636,29 @@ $('#btnHistory').onclick = () => {
 $('#histClose').onclick = () => $('#histModal').classList.add('hidden');
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('mousedown', e => { if (e.target===m) m.classList.add('hidden'); }));
 
+/* ───────── 전날 못한 일 ───────── */
+function prevUndone(name){          // 오늘 이전, 할 일을 적었던 가장 최근 날의 미완료 항목
+  const r = Object.values(records).filter(r => r.user === name && r.date < today && r.todos.length).sort((a,b) => b.date.localeCompare(a.date))[0];
+  return r ? { date:r.date, items:r.todos.filter(t => !t.done) } : null;
+}
+function renderUndone(){
+  const cur = rec(me.name).todos;
+  const col = name => {
+    if (!name) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
+    const u = prevUndone(name), mine = name === me.name;
+    const head = `<div class="uh"><i class="dot" style="background:${mine ? me.color : partner.color}"></i>${esc(name)}${u ? ` <span>${+u.date.slice(5,7)}/${+u.date.slice(8)}</span>` : ''}</div>`;
+    const body = !u ? '<div class="empty">이전 기록이 없어요</div>' : !u.items.length ? '<div class="empty">모두 끝냈어요 🎉</div>'
+      : u.items.map(t => `<div class="ui"><span>${esc(t.text)}</span>${mine && !cur.some(c => c.text === t.text) ? `<button data-add="${esc(t.text)}" title="오늘 할 일로 가져오기">＋</button>` : ''}</div>`).join('');
+    return `<div class="ucol">${head}${body}</div>`;
+  };
+  const names = [me.name, partner.name].filter(Boolean).sort();
+  $('#undoneBody').innerHTML = col(names[0]) + col(names[1]);
+}
+$('#undoneBody').addEventListener('click', e => {
+  const text = e.target.dataset?.add; if (!text) return;
+  const r = rec(me.name); r.todos.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), text, done:false }); touch(r);
+});
+
 /* ───────── 채팅 ───────── */
 function mergeChat(list){          // 새로 들어온 메시지가 있으면 true
   let added = false;
@@ -642,12 +677,15 @@ function renderChat(){
     return sep + `<div class="msg ${mine?'me':''}">${esc(m.text)}<small>${mine?'':esc(m.user)+' · '}${hm(m.ts)}</small></div>`;
   }).join('') : '<div class="empty">💬 아직 메시지가 없어요.</div>';
   el.scrollTop = el.scrollHeight;
+  for (const a of [me, partner]){          // 오늘 마지막으로 한 말을 머리 위에 계속 띄운다
+    const last = chat.filter(m => m.user === a.name && dateKey(new Date(m.ts)) === today).pop();
+    a.say = last ? { text:last.text } : null;
+  }
 }
 function sendChat(){
   const text = $('#chatInput').value.trim(); if (!text) return;
   const m = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), user:me.name, text, ts:Date.now() };
   chat.push(m); save(); send({ t:'chat', m }); $('#chatInput').value = ''; renderChat();
-  me.say = { text, until:Date.now()+5000 };
 }
 $('#chatSend').onclick = sendChat;
 $('#chatInput').addEventListener('keydown', e => { if (e.key==='Enter' && !e.isComposing) sendChat(); });
@@ -669,7 +707,7 @@ function renderTimer(){
 }
 function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/종료
   const r = rec(me.name); if (!r.checkIn || r.checkOut) return;
-  const rest = inRest(me), now = Date.now();
+  const rest = wantRest, now = Date.now();      // 탭이 뒤에 있어도 바로 반영되도록 위치가 아니라 의도로 판단
   if (rest && !r.breakStart){ r.breakStart = now; touch(r); toast('☕ 휴식 시작 — 근무 시간이 멈췄어요'); }
   else if (!rest && r.breakStart){ r.breakMs = (r.breakMs||0) + Math.max(0, now - r.breakStart); r.breakStart = null; touch(r); toast('💪 다시 근무 시작!'); }
 }
@@ -684,7 +722,7 @@ function renderHeader(){
 function wrapHtml(r){ return r.wrapUp ? `<div class="wrap"><b>🌙 마무리한 일</b>${esc(r.wrapUp)}</div>` : ''; }
 function render(){
   if (!me.name) return;
-  renderHeader(); renderTimer();
+  renderHeader(); renderTimer(); renderUndone();
   const pn = partner.name || '동료';
   $('#slot-p-cam em').textContent = `📷 ${pn} 카메라`; $('#slot-me-cam em').textContent = '📷 내 카메라';
   $('#slot-p-screen em').textContent = `🖥️ ${pn} 화면 공유`; $('#slot-me-screen em').textContent = '🖥️ 내 화면 공유';
@@ -707,7 +745,7 @@ function render(){
 setInterval(() => {
   const d = new Date(); $('#clock').textContent = `${dateKey(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   if (dateKey(d) !== today){ today = dateKey(d); render(); }
-  else if (me.name){ renderHeader(); renderTimer(); }
+  else if (me.name){ syncBreak(); renderHeader(); renderTimer(); }
 }, 1000);
 
 /* ───────── 사무실 맵 (캔버스) ───────── */
@@ -722,10 +760,20 @@ function resize(){
 addEventListener('resize', resize);
 const keys = new Set(); let keysMoved = false;
 const typing = () => /INPUT|TEXTAREA/.test(document.activeElement?.tagName) || document.querySelector('.modal:not(.hidden)');
-addEventListener('keydown', e => { if (typing() || !me.name) return; const k = e.key.toLowerCase(); if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){ keys.add(k); e.preventDefault(); } });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
-cv.addEventListener('click', e => { const b = cv.getBoundingClientRect(); me.tx = (e.clientX-b.left)/b.width*W; me.ty = (e.clientY-b.top)/b.height*H; keysMoved = true; });
+let wantRest = false;
+const restSpot = () => ({ x: seatOf(me.name) === 0 ? 485 : 795, y: 662 });
+function updateRestBtn(){ const b = $('#bRest'); b.textContent = wantRest ? '💺 자리로 돌아가기' : '☕ 쉬러 가기'; b.className = wantRest ? 'on' : ''; }
+function goTo(where){          // 갈 수 있는 곳은 내 의자와 쉬는 공간 두 곳뿐
+  wantRest = where === 'rest'; const t = wantRest ? restSpot() : SEATS[seatOf(me.name)];
+  me.tx = t.x; me.ty = t.y; updateRestBtn(); syncBreak();
+}
+cv.addEventListener('click', e => {
+  const b = cv.getBoundingClientRect(), x = (e.clientX-b.left)/b.width*W, y = (e.clientY-b.top)/b.height*H;
+  if (inRest({ x, y })) goTo('rest'); else if (x >= 310 && x <= 970 && y >= 44 && y <= 534) goTo('seat');
+});
+$('#bRest').onclick = () => goTo(wantRest ? 'seat' : 'rest');
 
 function rr(x,y,w,h,r,fill,stroke){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); if (fill){ ctx.fillStyle=fill; ctx.fill(); } if (stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); } }
 function fit(text, maxW){ if (ctx.measureText(text).width <= maxW) return text; let s = text; while (s.length>1 && ctx.measureText(s+'…').width > maxW) s = s.slice(0,-1); return s+'…'; }
@@ -796,31 +844,6 @@ function drawSummary(){             // 오른쪽 벽: 최근 7일 요약 (큰 �
     });
   }
 }
-function drawWeek(){                // 오른쪽 아래: 날짜별 순 근무 시간 막대 차트
-  const x = 870, y = 540, w = 380, h = 208; panel(x,y,w,h,'📊 날짜별 순 근무 (시간)');
-  const { names, days, get } = weekData();
-  let lx = x+w-14; ctx.font = '600 12px sans-serif'; ctx.textAlign = 'left';
-  [...names].reverse().forEach(n => {
-    lx -= ctx.measureText(n).width; ctx.fillStyle = '#fff'; ctx.fillText(n, lx, y+21);
-    lx -= 10; ctx.fillStyle = n===me.name ? me.color : partner.color; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(lx+2, y+20, 5, 0, 7); ctx.fill(); ctx.stroke(); lx -= 14;
-  });
-  let max = 4*3600e3; days.forEach(d => names.forEach(n => max = Math.max(max, get(d, n))));
-  const base = y+h-30, top = y+68, gw = (w-24)/7, bw = 22;
-  days.forEach((d, i) => {
-    const gx = x+12+i*gw, isToday = i === 6;
-    if (isToday) rr(gx+1, y+46, gw-2, h-52, 8, '#f1f0ff');
-    names.forEach((n, j) => {
-      const ms = get(d, n), bh = ms > 0 ? Math.max(4, (base-top)*ms/max) : 0;
-      const bx = gx + gw/2 + (names.length === 2 ? (j === 0 ? -bw-1 : 1) : -bw/2);
-      if (!bh) return;
-      ctx.beginPath(); ctx.roundRect(bx, base-bh, bw, bh, [5,5,0,0]); ctx.fillStyle = n===me.name ? me.color : partner.color; ctx.fill();
-      ctx.fillStyle = '#23263a'; ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText((ms/3600e3).toFixed(1), bx+bw/2, base-bh-8);
-    });
-    ctx.fillStyle = isToday ? '#4747c2' : '#7b8098'; ctx.font = (isToday ? '700 ' : '600 ') + '12px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(isToday ? '오늘' : `${'일월화수목금토'[d.getDay()]} ${d.getDate()}`, gx+gw/2, base+15);
-  });
-  ctx.strokeStyle = '#cfd3e2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x+12, base); ctx.lineTo(x+w-12, base); ctx.stroke();
-}
 function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
 
 function drawBoard(i, name){
@@ -865,8 +888,8 @@ function drawAvatar(a, isMe){
   ctx.font = '700 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 16;
   rr(x-tw/2, y-58, tw, 20, 10, 'rgba(35,38,58,.85)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-47.5);
-  if (a.say && Date.now() < a.say.until){
-    ctx.font = '13px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 200), bw = ctx.measureText(t).width + 20;
+  if (a.say){
+    ctx.font = '13px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 260), bw = ctx.measureText(t).width + 20;
     rr(x-bw/2, y-90, bw, 26, 11, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, x, y-76.5);
   }
 }
@@ -879,7 +902,6 @@ function frame(now){
     else if (me.tx != null){ const ex = me.tx-me.x, ey = me.ty-me.y, d = Math.hypot(ex,ey); if (d < 4) me.tx = me.ty = null; else { dx = ex/d; dy = ey/d; } }
     if (dx||dy){ const n = Math.hypot(dx,dy)||1; me.x = Math.max(30, Math.min(W-30, me.x + dx/n*240*dt)); me.y = Math.max(70, Math.min(H-34, me.y + dy/n*240*dt)); }
     if (now-lastSent > 66 && (me.x!==sentX || me.y!==sentY)){ send({ t:'pos', x:Math.round(me.x), y:Math.round(me.y) }); lastSent = now; sentX = me.x; sentY = me.y; }
-    syncBreak();
     partner.x += (partner.rx-partner.x)*Math.min(1, dt*12); partner.y += (partner.ry-partner.y)*Math.min(1, dt*12);
 
     ctx.setTransform(scale,0,0,scale,0,0);
@@ -887,8 +909,8 @@ function frame(now){
     rr(310, 44, 660, 490, 20, '#e7e9f1');
     ctx.fillStyle = '#9aa0b8'; ctx.font = '700 15px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('DESK ZONE', 330, 512);
-    drawAttendance(); drawSummary(); drawWeek();
-    const resting = inRest(me);
+    drawAttendance(); drawSummary();
+    const resting = wantRest;
     rr(REST.x, REST.y, REST.w, REST.h, 18, resting ? '#d9f3ee' : '#fff', resting ? '#12a594' : '#e3e6ee');
     rr(450, 628, 70, 54, 14, '#9fb0d0'); rr(760, 628, 70, 54, 14, '#9fb0d0');
     ctx.textAlign = 'center'; ctx.fillStyle = resting ? '#0b7a6e' : '#7b8098'; ctx.font = '700 17px sans-serif'; ctx.fillText('☕ 쉬는 공간', 640, 644);
