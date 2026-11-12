@@ -45,17 +45,18 @@
   .dot{width:8px;height:8px;border-radius:50%;background:#b9bdcc}
   .dot.on{background:var(--green)} .dot.work{background:var(--accent)} .dot.off{background:var(--amber)} .dot.rest{background:#12a594}
   .chip{font-variant-numeric:tabular-nums}
-  .net{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1.1}
+  .net{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1.1;text-align:right}
   .net.rest{color:#12a594}
-  .netsub{color:var(--sub);font-size:12px;margin-top:6px;line-height:1.5}
-  main{display:grid;grid-template-columns:300px 1fr 290px;min-height:0}
+  .netsub{color:var(--sub);font-size:13px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .netsub.week{text-align:right}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 290px;min-height:0}
   aside{background:var(--panel);overflow:auto;padding:16px}
   aside.left{border-right:1px solid var(--line)}
   aside.right{border-left:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
-  h3{margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:8px}
+  h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
   h3 span{font-weight:500;color:var(--sub);font-size:12px}
   .box{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
-  .todo{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .todo{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:15px}
   .todo:last-child{border-bottom:0}
   .todo input[type=checkbox]{width:17px;height:17px;margin:2px 0 0;accent-color:var(--accent);flex:none}
   .todo .t{flex:1;word-break:break-word;line-height:1.45}
@@ -66,9 +67,32 @@
   .wrap{margin-top:10px;padding:10px;background:#f7f7fb;border-radius:10px;font-size:13px;white-space:pre-wrap;line-height:1.5}
   .wrap b{display:block;margin-bottom:4px;font-size:12px;color:var(--sub)}
 
-  .stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:10px 10px 76px}
-  canvas{border-radius:18px;box-shadow:0 8px 30px rgba(40,40,90,.10);background:#fff}
-  .bar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:8px;padding:8px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(40,40,90,.16)}
+  .stage{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 340px;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:12px}
+  #scene{grid-column:1/3;grid-row:1;min-width:0;height:230px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#f4f2ed}
+  canvas{display:block}
+  .seat{grid-row:2;min-width:0;min-height:0;background:#fff;border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+  #meSeat{grid-column:1} #pSeat{grid-column:2}
+  .shead{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 14px;padding:12px 18px 12px;border-top:5px solid var(--c,var(--accent));border-bottom:1px solid var(--line)}
+  .who{display:flex;align-items:center;gap:9px;font-size:19px;min-width:0}
+  .who .dot{width:12px;height:12px;background:var(--c,var(--accent));flex:none}
+  .who b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .who small{font-weight:500;color:var(--sub);font-size:12px;margin-left:4px}
+  .pill{font-size:13px;font-weight:700;padding:4px 11px;border-radius:99px;background:#eef0f5;color:#7b8098;white-space:nowrap}
+  .pill.work{background:#ecebff;color:#4747c2} .pill.rest{background:#d9f3ee;color:#0b7a6e} .pill.off{background:#fff3d6;color:#a56a00}
+  .sbody{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+  .sec{min-width:0;min-height:0;display:flex;flex-direction:column;padding:14px 16px}
+  .sec.todos{grid-row:1/3;border-right:1px solid var(--line)}
+  .sec.goal{border-top:1px solid var(--line)}
+  .sec .list{flex:1;min-height:0;overflow:auto}
+  .goal textarea{flex:1;min-height:0;resize:none;font-size:15px;line-height:1.55}
+  .gtext{white-space:pre-wrap;font-size:15px;line-height:1.55;word-break:break-word}
+  @media (max-width:1500px){
+    .sbody{display:block;overflow:auto}
+    .sec{border-top:1px solid var(--line)} .sec.todos{border-right:0;border-top:0}
+    .sec .list{overflow:visible} .goal textarea{min-height:96px}
+  }
+  @media (max-width:1250px){ .stage{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 270px} }
+  .bar{grid-column:1/4;grid-row:3;justify-self:center;position:relative;display:flex;gap:8px;padding:8px;background:#fff;border-radius:16px;border:1px solid var(--line)}
   .bar button{background:#f1f2f7;color:var(--text);padding:10px 14px;white-space:nowrap}
   .bar button.on{background:#dff5ea;color:#12734b}
   .bar button.in{background:var(--accent);color:#fff}
@@ -99,37 +123,19 @@
   .badges span{font-size:12px;font-weight:700;font-style:normal;padding:4px 9px;border-radius:8px;background:rgba(35,38,58,.62);color:#d5d8e4}
   .badges span.on{background:#22a06b;color:#fff}
   .badges span.share{background:var(--accent);color:#fff}
-  #mapWrap{position:relative}
-  #mapWrap canvas{display:block}
-  #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
-  #mapWrap .undone{position:absolute;left:68%;top:71%;width:29.6%;height:27.6%;background:#fff;border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 10px rgba(40,40,90,.08)}
-  .undone h4{margin:0;padding:10px 14px;background:#3d4263;color:#fff;font-size:16px}
-  #undoneBody,#goalBody{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
-  #goalBody{grid-template-columns:1fr;grid-template-rows:1.25fr 1fr}
-  .goal .ucol{display:flex;flex-direction:column;padding:10px 12px}
-  .goal .ucol + .ucol{border-left:0;border-top:1px solid var(--line)}
-  .goal textarea{flex:1;min-height:0;resize:none;font-size:16px;line-height:1.55;padding:9px 11px}
-  .gtext{white-space:pre-wrap;font-size:16px;line-height:1.55;word-break:break-word}
   .bar .menu small{color:var(--sub);font-weight:400;margin-left:6px;font-size:11px}
-  .ucol{padding:8px 10px;overflow:auto;min-width:0}
-  .ucol + .ucol{border-left:1px solid var(--line)}
-  .uh{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;margin-bottom:4px}
-  .uh span{font-weight:500;color:var(--sub);font-size:11px}
-  .ui{display:flex;gap:6px;align-items:flex-start;font-size:15.5px;line-height:1.45;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .ui{display:flex;gap:6px;align-items:flex-start;font-size:15px;line-height:1.45;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .ui:last-child{border-bottom:0}
   .ui span{flex:1;word-break:break-word}
   .ui button{padding:1px 9px;background:var(--accent-soft);color:var(--accent);border-radius:6px;font-size:13px;flex:none}
-  #mapWrap #chatList{padding:10px;gap:6px;font-size:15.5px}
-  #mapWrap .chat .row{padding:8px;gap:6px}
-  #mapWrap .chat input{padding:9px 11px;font-size:15px;min-width:0}
-  #mapWrap .chat button{padding:9px 13px}
-  .chat{flex:1;min-height:160px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .chat h3{margin:0;padding:10px 12px;border-bottom:1px solid var(--line)}
-  #chatList{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+  .chat{grid-column:3;grid-row:1/3;min-width:0;min-height:0;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .chat h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}
+  #chatList{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:7px;font-size:15px}
   .msg{max-width:88%;padding:7px 10px;border-radius:12px;background:#f1f2f7;align-self:flex-start;word-break:break-word;white-space:pre-wrap;line-height:1.4}
   .msg.me{align-self:flex-end;background:var(--accent);color:#fff}
   .msg small{display:block;font-size:10px;opacity:.65;margin-top:2px}
   .daysep{align-self:center;font-size:11px;color:var(--sub);margin:4px 0}
-  .chat .row{padding:8px;border-top:1px solid var(--line)}
+  .chat .row{padding:10px;border-top:1px solid var(--line)}
   .novideo{color:var(--sub);font-size:13px;line-height:1.6}
 
   /* 모달 */
@@ -174,39 +180,61 @@
     <b>🏢 월 매출 1억 사무실</b>
     <span class="clock" id="clock"></span>
     <span class="sp"></span>
-    <span class="chip" id="chipMe"></span>
-    <span class="chip" id="chipPartner"></span>
     <span class="chip" id="chipConn"><i class="dot"></i><span>연결 준비 중</span></span>
     <button class="ghost" id="btnHistory">📅 기록</button>
   </header>
   <main>
-    <aside class="left">
-      <div class="box">
-        <h3>⏱ 오늘 순 근무 시간</h3>
-        <div class="net" id="netTime">0:00:00</div>
-        <div class="netsub" id="netSub"></div>
-      </div>
-      <div class="box">
-        <h3>📝 오늘 내 할 일 <span id="myCount"></span></h3>
-        <div class="row" style="margin-bottom:8px"><input id="todoInput" maxlength="80" placeholder="할 일 적고 Enter"><button id="todoAdd">추가</button></div>
-        <div id="myTodos"></div>
-        <div id="myWrap"></div>
-      </div>
-      <div class="box">
-        <h3 id="partnerTitle">👥 동료의 할 일</h3>
-        <div id="partnerTodos"></div>
-        <div id="partnerWrap"></div>
-      </div>
-    </aside>
     <div class="stage" id="stage">
-      <div id="mapWrap">
-        <canvas id="cv"></canvas>
-        <div class="chat">
-          <div id="chatList"></div>
-          <div class="row"><input id="chatInput" maxlength="500" placeholder="💬 메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
+      <div id="scene"><canvas id="cv"></canvas></div>
+      <section class="seat" id="meSeat">
+        <div class="shead">
+          <div class="who"><i class="dot"></i><b id="meName"></b><span class="pill" id="mePill"></span></div>
+          <div class="net" id="meNet">0:00:00</div>
+          <div class="netsub" id="meSub"></div>
+          <div class="netsub week" id="meWeek"></div>
         </div>
-        <div class="undone" id="undoneBox"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
-        <div class="undone goal" id="goalBox"><h4>🎯 이번 달 목표</h4><div id="goalBody"></div></div>
+        <div class="sbody">
+          <div class="sec todos">
+            <h3>📝 오늘 할 일 <span id="myCount"></span></h3>
+            <div class="row" style="margin-bottom:8px"><input id="todoInput" maxlength="80" placeholder="할 일 적고 Enter"><button id="todoAdd">추가</button></div>
+            <div class="list"><div id="myTodos"></div><div id="myWrap"></div></div>
+          </div>
+          <div class="sec">
+            <h3>📌 전날 못한 일 <span id="meUndoneDate"></span></h3>
+            <div class="list" id="meUndone"></div>
+          </div>
+          <div class="sec goal">
+            <h3>🎯 <b class="gm"></b> 목표</h3>
+            <textarea id="goalMine" maxlength="300" placeholder="이번 달 목표를 적어보세요"></textarea>
+          </div>
+        </div>
+      </section>
+      <section class="seat" id="pSeat">
+        <div class="shead">
+          <div class="who"><i class="dot"></i><b id="pName"></b><span class="pill" id="pPill"></span></div>
+          <div class="net" id="pNet">0:00:00</div>
+          <div class="netsub" id="pSub"></div>
+          <div class="netsub week" id="pWeek"></div>
+        </div>
+        <div class="sbody">
+          <div class="sec todos">
+            <h3>📝 오늘 할 일 <span id="pCount"></span></h3>
+            <div class="list"><div id="partnerTodos"></div><div id="partnerWrap"></div></div>
+          </div>
+          <div class="sec">
+            <h3>📌 전날 못한 일 <span id="pUndoneDate"></span></h3>
+            <div class="list" id="pUndone"></div>
+          </div>
+          <div class="sec goal">
+            <h3>🎯 <b class="gm"></b> 목표</h3>
+            <div class="list gtext" id="goalP"></div>
+          </div>
+        </div>
+      </section>
+      <div class="chat">
+        <h3>💬 채팅</h3>
+        <div id="chatList"></div>
+        <div class="row"><input id="chatInput" maxlength="500" placeholder="메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
       </div>
       <div class="bar">
         <span class="grp"><button id="bMic">🎤 마이크</button><button class="pick" id="bMicPick" title="마이크 선택">▾</button></span>
@@ -279,8 +307,8 @@ function hash(str){ let h1=0xdeadbeef, h2=0x41c6ce57; for (let i=0;i<str.length;
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('#toasts').append(t); setTimeout(()=>t.remove(), 3500); }
 
 /* ───────── 상태 ───────── */
-const W = 1280; let H = 760;
-const SEATS = [{x:490,y:468},{x:790,y:468}];
+let W = 1000; const H = 230;          // 사무실 띠(캔버스) 크기 — 폭은 화면에 맞춰 바뀐다
+const SEATS = [{x:250,y:150},{x:750,y:150}];          // 0: 나, 1: 동료 (각자 카드 바로 위)
 const STATUSES = {          // pause: true면 그 상태인 동안 순 근무 시간이 멈춘다
   work:{ icon:'💼', label:'업무 중', pause:false }, rest:{ icon:'☕', label:'쉬는 중', pause:true }, meal:{ icon:'🍚', label:'식사 중', pause:true },
   move:{ icon:'🚗', label:'이동 중', pause:true }, out:{ icon:'🏃', label:'외근 중', pause:false },
@@ -663,20 +691,17 @@ function prevUndone(name){          // 오늘 이전, 할 일을 적었던 가�
   const r = Object.values(records).filter(r => r.user === name && r.date < today && r.todos.length).sort((a,b) => b.date.localeCompare(a.date))[0];
   return r ? { date:r.date, items:r.todos.filter(t => !t.done) } : null;
 }
-function renderUndone(){
+function renderUndone(){          // 각자 자리 카드 안에 표시
   const cur = rec(me.name).todos;
-  const col = name => {
-    if (!name) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
-    const u = prevUndone(name), mine = name === me.name;
-    const head = `<div class="uh"><i class="dot" style="background:${mine ? me.color : partner.color}"></i>${esc(name)}${u ? ` <span>${+u.date.slice(5,7)}/${+u.date.slice(8)}</span>` : ''}</div>`;
-    const body = !u ? '<div class="empty">이전 기록이 없어요</div>' : !u.items.length ? '<div class="empty">모두 끝냈어요 🎉</div>'
-      : u.items.map(t => `<div class="ui"><span>${esc(t.text)}</span>${mine && !cur.some(c => c.text === t.text) ? `<button data-add="${esc(t.text)}" title="오늘 할 일로 가져오기">＋</button>` : ''}</div>`).join('');
-    return `<div class="ucol">${head}${body}</div>`;
+  const fill = (pre, name, mine) => {
+    const u = name ? prevUndone(name) : null;
+    $(`#${pre}UndoneDate`).textContent = u ? `${+u.date.slice(5,7)}/${+u.date.slice(8)}` : '';
+    $(`#${pre}Undone`).innerHTML = !u ? '<div class="empty">이전 기록이 없어요</div>' : !u.items.length ? '<div class="empty">모두 끝냈어요 🎉</div>'
+      : u.items.map(t => `<div class="ui"><span>${esc(t.text)}</span>${mine && !cur.some(c => c.text === t.text) ? `<button data-add="${esc(t.text)}" title="오늘 할 일로 가져오기">＋ 오늘 할 일</button>` : ''}</div>`).join('');
   };
-  const names = [me.name, partner.name].filter(Boolean).sort();
-  $('#undoneBody').innerHTML = col(names[0]) + col(names[1]);
+  fill('me', me.name, true); fill('p', partner.name, false);
 }
-$('#undoneBody').addEventListener('click', e => {
+$('#meUndone').addEventListener('click', e => {
   const text = e.target.dataset?.add; if (!text) return;
   const r = rec(me.name); r.todos.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), text, done:false }); touch(r);
 });
@@ -694,23 +719,13 @@ function saveGoal(){
   r.text = v; touch(r);
 }
 function renderGoals(){
-  const names = [me.name, partner.name].filter(Boolean).sort(), body = $('#goalBody'), key = monthKey() + '|' + names.join('|') + '|' + partner.color;
-  $('#goalBox h4').textContent = `🎯 ${+monthKey().slice(5)}월 목표`;
-  if (body.dataset.key !== key){
-    if (body.dataset.key) saveGoal();
-    body.dataset.key = key;
-    body.innerHTML = [me.name, partner.name].map(n => { if (!n) return '<div class="ucol"><div class="empty">동료를 기다리는 중…</div></div>';
-      const mine = n === me.name;
-      return `<div class="ucol"><div class="uh"><i class="dot" style="background:${mine ? me.color : partner.color}"></i>${esc(n)}</div>`
-        + (mine ? '<textarea id="goalMine" maxlength="300" placeholder="이번 달 목표를 적어보세요"></textarea>' : '<div class="gtext" id="goalP"></div>') + '</div>';
-    }).join('');
-    const ta = $('#goalMine'); ta.value = goalRec(me.name).text || '';
-    ta.addEventListener('input', () => { clearTimeout(goalT); goalT = setTimeout(saveGoal, 700); });
-    ta.addEventListener('blur', saveGoal);
-  }
-  const gp = $('#goalP'); if (gp){ const t = goalRec(partner.name).text; gp.textContent = t || '아직 목표를 적지 않았어요'; gp.classList.toggle('empty', !t); }
-  const ta = $('#goalMine'); if (ta && document.activeElement !== ta) ta.value = goalRec(me.name).text || '';
+  const mon = `${+monthKey().slice(5)}월`; document.querySelectorAll('.gm').forEach(e => e.textContent = mon);
+  const gp = $('#goalP'), t = partner.name ? goalRec(partner.name).text : '';
+  gp.textContent = t || (partner.name ? '아직 목표를 적지 않았어요' : ''); gp.classList.toggle('empty', !t);
+  const ta = $('#goalMine'); if (document.activeElement !== ta) ta.value = goalRec(me.name).text || '';
 }
+$('#goalMine').addEventListener('input', () => { clearTimeout(goalT); goalT = setTimeout(saveGoal, 700); });
+$('#goalMine').addEventListener('blur', saveGoal);
 
 /* ───────── 채팅 ───────── */
 function mergeChat(list){          // 새로 들어온 메시지가 있으면 true
@@ -750,13 +765,29 @@ function statusOf(r){
   if (r.checkOut) return { cls:'off', text:`퇴근 ${hm(r.checkOut)} · 순 근무 ${n}`, short:`퇴근 · ${n}`, label:'퇴근' };
   if (!r.checkIn) return { cls:'', text:'출근 전', short:'출근 전', label:'출근 전' };
   const s = STATUSES[statusKey(r)];
-  return { cls: s.pause ? 'rest' : 'work', text:`${s.icon} ${s.label} · ${n}`, short:`${s.label} · ${n}`, label:s.label };
+  return { cls: s.pause ? 'rest' : 'work', text:`${s.icon} ${s.label} · ${n}`, short:`${s.label} · ${n}`, label:`${s.icon} ${s.label}` };
 }
-function renderTimer(){
-  const r = rec(me.name), resting = r.breakStart && !r.checkOut;
-  $('#netTime').textContent = hms(netMs(r)); $('#netTime').className = 'net' + (resting ? ' rest' : '');
-  $('#netSub').textContent = !r.checkIn ? '출근을 누르면 시간이 흐르기 시작해요. 쉬는 공간에 가면 멈춰요.'
-    : `출근 ${hm(r.checkIn)} · 휴식 ${dur(breakMs(r))}` + (r.checkOut ? ` · 퇴근 ${hm(r.checkOut)}` : resting ? ' · 지금은 멈춤' : '');
+function weekData(){
+  const days = [];
+  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  return { days, get:(d, n) => { const r = records[dateKey(d)+'|'+n]; return r ? netMs(r) : 0; } };
+}
+function weekLine(name){
+  const { days, get } = weekData(), v = days.map(d => get(d, name)), n = v.filter(x => x > 0).length;
+  return n ? `최근 7일 ${dur(v.reduce((a,b) => a+b, 0))} · ${n}일 출근` : '최근 7일 기록 없음';
+}
+function renderTimer(){          // 자리 카드 머리줄: 이름 · 상태 · 순 근무 시간 (1초마다)
+  const fill = (pre, a, mine) => {
+    const r = a.name ? rec(a.name) : null, st = r ? statusOf(r) : { cls:'', label:'미접속' }, paused = !!r && r.breakStart && !r.checkOut;
+    $(`#${pre}Seat`).style.setProperty('--c', a.color);
+    $(`#${pre}Name`).innerHTML = a.name ? esc(a.name) + (mine ? '<small>나</small>' : partner.online ? '' : '<small>오프라인</small>') : '동료';
+    const pill = $(`#${pre}Pill`); pill.textContent = st.label; pill.className = 'pill ' + st.cls;
+    const net = $(`#${pre}Net`); net.textContent = r ? hms(netMs(r)) : '-:--:--'; net.className = 'net' + (paused ? ' rest' : '');
+    $(`#${pre}Sub`).textContent = !r ? '같은 방 코드로 들어오면 여기에 보여요' : !r.checkIn ? (mine ? '출근을 누르면 시간이 흐르기 시작해요' : '아직 출근 전이에요')
+      : `출근 ${hm(r.checkIn)}` + (r.checkOut ? ` · 퇴근 ${hm(r.checkOut)}` : '') + (breakMs(r) >= 60000 ? ` · 휴식 ${dur(breakMs(r))}` : '') + (paused ? ' · 지금은 멈춤' : '');
+    $(`#${pre}Week`).textContent = r ? weekLine(a.name) : '';
+  };
+  fill('me', me, true); fill('p', partner, false);
 }
 function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/종료
   const r = rec(me.name); if (!r.checkIn || r.checkOut) return;
@@ -765,10 +796,6 @@ function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/�
   else if (!rest && r.breakStart){ r.breakMs = (r.breakMs||0) + Math.max(0, now - r.breakStart); r.breakStart = null; touch(r); toast('💪 다시 근무 시작!'); }
 }
 function renderHeader(){
-  const mr = rec(me.name), ms = statusOf(mr);
-  $('#chipMe').innerHTML = `<i class="dot ${ms.cls}"></i>${esc(me.name)} · ${ms.text}`;
-  if (partner.name){ const ps = statusOf(rec(partner.name)); $('#chipPartner').innerHTML = `<i class="dot ${ps.cls}"></i>${esc(partner.name)} · ${ps.text}`; $('#chipPartner').classList.remove('hidden'); }
-  else $('#chipPartner').classList.add('hidden');
   const map = { init:['','연결 준비 중'], waiting:['','동료 기다리는 중'], connected:['on','연결됨'], error:['','연결 오류 · 새로고침 해보세요'] }[connState];
   $('#chipConn').innerHTML = `<i class="dot ${map[0]}"></i><span>${map[1]}</span>`;
 }
@@ -783,14 +810,13 @@ function render(){
   $('#myCount').textContent = r.todos.length ? `${done}/${r.todos.length} 완료` : '';
   $('#myTodos').innerHTML = r.todos.length ? r.todos.map(t =>
     `<div class="todo ${t.done?'done':''}" data-id="${esc(t.id)}"><input type="checkbox" ${t.done?'checked':''}><span class="t">${esc(t.text)}</span><button class="x" title="삭제">×</button></div>`).join('')
-    : '<div class="empty">오늘 할 일을 적어보세요. 사무실 모니터에 표시돼요.</div>';
+    : '<div class="empty">오늘 할 일을 적어보세요.</div>';
   $('#myWrap').innerHTML = wrapHtml(r);
-  if (partner.name){
-    const p = rec(partner.name), pd = p.todos.filter(t => t.done).length;
-    $('#partnerTitle').innerHTML = `👥 ${esc(partner.name)}의 할 일 <span>${p.todos.length?pd+'/'+p.todos.length+' 완료':''}${partner.online?'':' · 오프라인'}</span>`;
-    $('#partnerTodos').innerHTML = p.todos.length ? p.todos.map(t => `<div class="todo ${t.done?'done':''}"><span>${t.done?'✅':'⬜'}</span><span class="t">${esc(t.text)}</span></div>`).join('') : '<div class="empty">아직 적은 할 일이 없어요.</div>';
-    $('#partnerWrap').innerHTML = wrapHtml(p);
-  } else { $('#partnerTitle').textContent = '👥 동료의 할 일'; $('#partnerTodos').innerHTML = '<div class="empty">동료가 같은 방 코드로 들어오면 여기에 보여요.</div>'; $('#partnerWrap').innerHTML = ''; }
+  const p = partner.name ? rec(partner.name) : null, pd = p ? p.todos.filter(t => t.done).length : 0;
+  $('#pCount').textContent = p && p.todos.length ? `${pd}/${p.todos.length} 완료` : '';
+  $('#partnerTodos').innerHTML = !p ? '<div class="empty">동료를 기다리는 중…</div>' : p.todos.length
+    ? p.todos.map(t => `<div class="todo ${t.done?'done':''}"><span>${t.done?'✅':'⬜'}</span><span class="t">${esc(t.text)}</span></div>`).join('') : '<div class="empty">아직 적은 할 일이 없어요.</div>';
+  $('#partnerWrap').innerHTML = p ? wrapHtml(p) : '';
   const out = !!r.checkOut;
   $('#bIn').disabled = !!r.checkIn; $('#bIn').textContent = r.checkIn ? `☀️ 출근 ${hm(r.checkIn)}` : '☀️ 출근';
   $('#bOut').textContent = out ? `🌙 퇴근 ${hm(r.checkOut)} · 수정` : '🌙 퇴근';
@@ -804,25 +830,13 @@ setInterval(() => {
 /* ───────── 사무실 맵 (캔버스) ───────── */
 const cv = $('#cv'), ctx = cv.getContext('2d');
 let scale = 1;
-const LY = {};
-function layout(){          // 맵 높이(H)가 창에 맞춰 늘어나면 그만큼 패널·모니터·아래 칸을 키운다
-  const e1 = Math.round((H-760)*0.45);
-  LY.panelH = 240; LY.sideY = 62+LY.panelH+10; LY.boardH = 200+e1;
-  LY.deskY = 66+LY.boardH+70; SEATS[0].y = SEATS[1].y = LY.deskY+118;
-  LY.zoneB = SEATS[0].y+46; LY.bandY = LY.zoneB+8;
-}
 function resize(){
-  const st = $('#stage'), aw = st.clientWidth-20, ah = st.clientHeight-86;
-  if (aw <= 0 || ah <= 0) return;
-  H = Math.max(760, Math.min(1060, Math.round(W*ah/aw))); layout();
-  const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
-  cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px';
-  cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
-  for (const [sel, x, y, w] of [['#mapWrap .chat', 28, LY.sideY, 300], ['#undoneBox', 340, LY.bandY, 600], ['#goalBox', 952, LY.sideY, 300]]){
-    const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (y/H*100)+'%'; el.height = ((H-12-y)/H*100)+'%';
-  }
+  const cw = $('#scene').clientWidth; if (cw <= 0) return;
+  const dpr = devicePixelRatio||1; W = cw; scale = dpr;
+  cv.style.width = W+'px'; cv.style.height = H+'px'; cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  SEATS[0].x = (W-12)/4; SEATS[1].x = W-SEATS[0].x;          // 두 자리 카드의 가운데
 }
-addEventListener('resize', resize); layout();
+addEventListener('resize', resize);
 function updateStatusBtn(){
   if (!me.name) return;
   const s = STATUSES[statusKey(rec(me.name))], b = $('#bStatus'); b.textContent = `${s.icon} ${s.label} ▾`; b.className = s.pause ? 'on' : '';
@@ -840,104 +854,31 @@ document.addEventListener('mousedown', e => { if (!e.target.closest('#statusMenu
 
 function rr(x,y,w,h,r,fill,stroke){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); if (fill){ ctx.fillStyle=fill; ctx.fill(); } if (stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke(); } }
 function fit(text, maxW){ if (ctx.measureText(text).width <= maxW) return text; let s = text; while (s.length>1 && ctx.measureText(s+'…').width > maxW) s = s.slice(0,-1); return s+'…'; }
-const PILL = { work:['#ecebff','#4747c2'], off:['#fff3d6','#a56a00'], rest:['#d9f3ee','#0b7a6e'], '':['#eef0f5','#7b8098'] };
 function drawFloor(){
   ctx.fillStyle = '#f4f2ed'; ctx.fillRect(0,0,W,H);
   ctx.strokeStyle = '#e9e6de'; ctx.lineWidth = 1; ctx.beginPath();
-  for (let x = 0; x <= W; x += 64){ ctx.moveTo(x,42); ctx.lineTo(x,H); }
+  for (let x = W/2 % 64; x <= W; x += 64){ ctx.moveTo(x,42); ctx.lineTo(x,H); }
   for (let y = 42; y <= H; y += 64){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
   ctx.stroke();
   ctx.fillStyle = '#dfe3ee'; ctx.fillRect(0,0,W,38); ctx.fillStyle = '#3d4263'; ctx.fillRect(0,36,W,6);      // 벽
-  for (const x of [70,190,310,890,1010,1130]){ rr(x,6,84,24,4,'#c9e8ff','#aab2c8'); ctx.strokeStyle = '#aab2c8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x+42,6); ctx.lineTo(x+42,30); ctx.stroke(); }
-  const d = new Date(), cx = 640, cy = 19;                                                                      // 벽시계
+  for (const c of [SEATS[0].x, SEATS[1].x]) for (const x of [c-140, c-42, c+56]){ rr(x,6,84,24,4,'#c9e8ff','#aab2c8'); ctx.strokeStyle = '#aab2c8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x+42,6); ctx.lineTo(x+42,30); ctx.stroke(); }
+  const d = new Date(), cx = W/2, cy = 19;                                                                      // 벽시계
   ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3d4263'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx,cy,14,0,7); ctx.fill(); ctx.stroke();
   const hand = (ang, len, lw) => { ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.sin(ang)*len, cy-Math.cos(ang)*len); ctx.stroke(); };
   hand((d.getHours()%12 + d.getMinutes()/60) / 12 * Math.PI*2, 7, 2.2); hand(d.getMinutes() / 60 * Math.PI*2, 10.5, 1.6);
 }
-function panel(x,y,w,h,title){
-  rr(x,y+4,w,h,14,'rgba(40,40,80,.08)'); rr(x,y,w,h,14,'#fff','#d9dce8');
-  ctx.beginPath(); ctx.roundRect(x,y,w,44,[14,14,0,0]); ctx.fillStyle = '#3d4263'; ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '700 17px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(title, x+14, y+23);
-}
-function personHead(x, y, w, name, col, label, cls){          // 패널 안 한 사람 칸의 머리줄 (이름 + 상태)
-  ctx.textAlign = 'left'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+24, y+13, 7, 0, 7); ctx.fill();
-  ctx.fillStyle = '#23263a'; ctx.font = '700 19px sans-serif'; ctx.fillText(fit(name, 120), x+38, y+14);
-  if (!label) return;
-  ctx.font = '700 13px sans-serif'; const tw = ctx.measureText(label).width + 18;
-  rr(x+w-16-tw, y+1, tw, 26, 13, PILL[cls][0]); ctx.fillStyle = PILL[cls][1]; ctx.fillText(label, x+w-16-tw+9, y+14.5);
-}
-function rowsOf(x, w, y0, gap, rows, col){
-  rows.forEach(([k, v, big], n) => {
-    const ry = y0 + n*gap;
-    ctx.font = '15px sans-serif'; ctx.fillStyle = '#7b8098'; ctx.textAlign = 'left'; ctx.fillText(k, x+22, ry);
-    ctx.fillStyle = big ? col : '#23263a'; ctx.font = big ? '800 19px sans-serif' : '600 15px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(v, x+w-18, ry);
-  });
-}
-function waiting(x, w, y){ ctx.fillStyle = '#a3a8bd'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('동료를 기다리는 중…', x+w/2, y); }
-function divider(x, w, y){ ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+16, y); ctx.lineTo(x+w-16, y); ctx.stroke(); }
-function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
-  const x = 28, y = 62, w = 300, h = LY.panelH, bh = (h-56)/2; panel(x,y,w,h,'📋 오늘 출근 현황');
-  const names = [me.name, partner.name].filter(Boolean).sort();
-  for (let i = 0; i < 2; i++){
-    const by = y+58+i*bh, name = names[i];
-    if (i === 1) divider(x, w, by-10);
-    if (!name){ waiting(x, w, by+bh/2-10); continue; }
-    const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
-    personHead(x, by, w, name, col, st.label, st.cls);
-    rowsOf(x, w, by+44, 26, [[r.checkOut ? '출근 ~ 퇴근' : '출근', r.checkIn ? hm(r.checkIn) + (r.checkOut ? ' ~ ' + hm(r.checkOut) : '') : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true]], col);
-  }
-}
-function weekData(){
-  const names = [me.name, partner.name].filter(Boolean).sort(), days = [];
-  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d); }
-  return { names, days, get:(d, n) => { const r = records[dateKey(d)+'|'+n]; return r ? netMs(r) : 0; } };
-}
-function drawSummary(){             // 오른쪽 벽: 최근 7일 요약 (큰 숫자)
-  const x = 952, y = 62, w = 300, h = LY.panelH, bh = (h-56)/2; panel(x,y,w,h,'🏆 최근 7일 요약');
-  const { names, days, get } = weekData();
-  for (let i = 0; i < 2; i++){
-    const by = y+58+i*bh, n = names[i];
-    if (i === 1) divider(x, w, by-10);
-    if (!n){ waiting(x, w, by+bh/2-10); continue; }
-    const col = n===me.name ? me.color : partner.color, vals = days.map(d => get(d, n));
-    const total = vals.reduce((a,b) => a+b, 0), worked = vals.filter(v => v > 0).length;
-    personHead(x, by, w, n, col, worked + '일 출근', '');
-    rowsOf(x, w, by+44, 26, [['하루 평균', worked ? dur(total/worked) : '—'], ['7일 합계', dur(total), true]], col);
-  }
-}
-function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
+function chair(x,y){ rr(x-27,y-22,54,44,12,'#3d4263'); }
 
-function drawBoard(i, name){
-  const x = 360 + i*300, y = 66, w = 260, h = LY.boardH;
-  rr(x+w/2-8, y+h, 16, 22, 0, '#aeb3c6'); rr(x+w/2-40, y+h+20, 80, 8, 4, '#aeb3c6');
-  rr(x, y, w, h, 14, '#262a41'); rr(x+8, y+8, w-16, h-16, 8, '#fbfbff');
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  if (!name){ ctx.fillStyle='#a3a8bd'; ctx.font='700 17px sans-serif'; ctx.textAlign='center'; ctx.fillText('빈 자리', x+w/2, y+h/2-12); ctx.font='14px sans-serif'; ctx.fillText('동료를 기다리는 중…', x+w/2, y+h/2+14); return; }
-  const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
-  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+27, y+32, 7, 0, 7); ctx.fill();
-  ctx.font = '700 13px sans-serif'; const tw = ctx.measureText(st.short).width + 16;
-  rr(x+w-18-tw, y+20, tw, 25, 12.5, PILL[st.cls][0]); ctx.fillStyle = PILL[st.cls][1]; ctx.fillText(st.short, x+w-18-tw+8, y+33);
-  ctx.fillStyle = '#23263a'; ctx.font = '700 18px sans-serif'; ctx.fillText(fit(name, w-38-18-tw-10), x+40, y+33);
-  ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+20, y+54); ctx.lineTo(x+w-20, y+54); ctx.stroke();
-  const showWrap = r.checkOut && r.wrapUp, gap = 27, max = Math.max(1, Math.floor((h-74-(showWrap ? 50 : 8)) / gap));
-  const more = r.todos.length > max, shown = more ? max-1 : max;
-  ctx.font = '16px sans-serif';
-  if (!r.todos.length){ ctx.fillStyle = '#a3a8bd'; ctx.fillText('오늘 할 일이 아직 없어요', x+22, y+78); }
-  r.todos.slice(0, shown).forEach((t, n) => {
-    const ly = y + 76 + n*gap;
-    rr(x+22, ly-8, 16, 16, 4, t.done ? col : '#fff', t.done ? col : '#c5c9d8');
-    if (t.done){ ctx.strokeStyle='#fff'; ctx.lineWidth=2.2; ctx.beginPath(); ctx.moveTo(x+26,ly); ctx.lineTo(x+29,ly+3.5); ctx.lineTo(x+35,ly-3.5); ctx.stroke(); }
-    ctx.fillStyle = t.done ? '#a3a8bd' : '#23263a'; const tx = fit(t.text, w-72); ctx.fillText(tx, x+46, ly+1);
-    if (t.done){ ctx.strokeStyle='#a3a8bd'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x+46,ly+1); ctx.lineTo(x+46+ctx.measureText(tx).width,ly+1); ctx.stroke(); }
-  });
-  if (more){ ctx.fillStyle='#7b8098'; ctx.font='14px sans-serif'; ctx.fillText(`+ ${r.todos.length-shown}개 더`, x+46, y+76+shown*gap); }
-  if (showWrap){ rr(x+18, y+h-56, w-36, 38, 8, '#f3f3fa'); ctx.fillStyle='#55597a'; ctx.font='14px sans-serif'; ctx.fillText(fit('🌙 '+r.wrapUp.replace(/\s+/g,' '), w-56), x+28, y+h-36); }
+function drawDesk(x){          // 아바타 앞에 놓이는 책상
+  const y = 172;
+  rr(x-120, y+4, 240, 46, 10, 'rgba(40,40,80,.07)'); rr(x-120, y, 240, 46, 10, '#f3ede4', '#dccfbd');
+  rr(x-98, y+9, 50, 28, 4, '#262a41'); rr(x-94, y+13, 42, 20, 2, '#8fd3ff');
+  rr(x+22, y+10, 30, 26, 3, '#fff', '#e3e6ee');
+  ctx.fillStyle='#c98a5a'; ctx.beginPath(); ctx.arc(x+88, y+23, 10, 0, 7); ctx.fill(); ctx.fillStyle='#6b4226'; ctx.beginPath(); ctx.arc(x+88, y+23, 6, 0, 7); ctx.fill();
 }
-function drawDesk(i){
-  const x = 390 + i*300, y = LY.deskY;
-  rr(x, y, 200, 78, 10, '#f3ede4', '#dccfbd');
-  rr(x+70, y+14, 60, 38, 5, '#262a41'); rr(x+74, y+18, 52, 30, 3, '#8fd3ff'); rr(x+92, y+52, 16, 8, 2, '#aeb3c6');
-  rr(x+20, y+22, 30, 38, 4, '#fff', '#e3e6ee'); ctx.fillStyle='#c98a5a'; ctx.beginPath(); ctx.arc(x+168, y+40, 10, 0, 7); ctx.fill(); ctx.fillStyle='#6b4226'; ctx.beginPath(); ctx.arc(x+168, y+40, 6, 0, 7); ctx.fill();
+function drawVacant(x, y, text){
+  ctx.font = '600 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width + 22; rr(x-tw/2, y-62, tw, 26, 13, 'rgba(255,255,255,.85)', '#d9dce8'); ctx.fillStyle = '#7b8098'; ctx.fillText(text, x, y-48.5);
 }
 function drawAvatar(a, isMe){
   const {x, y} = a;
@@ -949,32 +890,32 @@ function drawAvatar(a, isMe){
   ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 18;
   rr(x-tw/2, y-68, tw, 23, 11.5, 'rgba(35,38,58,.88)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-56);
-  let top = y-68;          // 이름표 위: 상태 표시(업무 중이 아닐 때), 그 위에 마지막 채팅
   const r = records[today+'|'+a.name], sk = r && r.checkIn && !r.checkOut ? statusKey(r) : 'work';
   if (sk !== 'work'){
     const s = STATUSES[sk], t = `${s.icon} ${s.label}`, bw = ctx.measureText(t).width + 22;
-    rr(x-bw/2, y-98, bw, 26, 13, s.pause ? '#12a594' : '#f5a524'); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y-84.5); top = y-98;
+    rr(x-bw/2, y-98, bw, 26, 13, s.pause ? '#12a594' : '#f5a524'); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y-84.5);
   }
   if (a.say){
-    ctx.font = '15px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 280), bw = ctx.measureText(t).width + 22;
-    const bx = Math.max(8, Math.min(W-8-bw, x-bw/2));
-    rr(bx, top-36, bw, 30, 12, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, top-20.5);
+    ctx.font = '15px sans-serif';          // 마지막 채팅은 머리 오른쪽 말풍선으로
+    const t = fit(a.say.text.replace(/\s+/g,' '), Math.max(70, Math.min(320, SEATS[0].x-78))), bw = ctx.measureText(t).width + 24, bx = x+34, by = y-42;
+    rr(bx, by, bw, 32, 12, '#fff', '#cfd3e2');
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(bx+1.5, by+10); ctx.lineTo(bx-8, by+17); ctx.lineTo(bx+1.5, by+23); ctx.fill();
+    ctx.strokeStyle = '#cfd3e2'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by+10); ctx.lineTo(bx-8, by+17); ctx.lineTo(bx, by+23); ctx.stroke();
+    ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, by+16.5);
   }
 }
 let lastT = performance.now();
 function frame(now){
   const dt = Math.min(.05, (now-lastT)/1000); lastT = now;
   if (me.name){
-    for (const a of [me, partner]){ const t = SEATS[seatOf(a.name)]; a.x = t.x; a.y = t.y; }
-
+    me.x = SEATS[0].x; me.y = SEATS[0].y; partner.x = SEATS[1].x; partner.y = SEATS[1].y;
     ctx.setTransform(scale,0,0,scale,0,0);
     drawFloor();
-    rr(340, 44, 600, LY.zoneB-44, 20, '#e7e9f1');
-    drawAttendance(); drawSummary();
-    const names = [me.name, partner.name].filter(Boolean).sort();
-    for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
-    const list = [[me,true]]; if (partner.online && partner.name) list.push([partner,false]);
-    list.sort((a,b) => a[0].y-b[0].y).forEach(([a,m]) => drawAvatar(a,m));
+    for (const s of SEATS) chair(s.x, s.y+6);
+    drawAvatar(me, true);
+    if (partner.online && partner.name) drawAvatar(partner, false);
+    else drawVacant(partner.x, partner.y, partner.name ? `${partner.name} · 오프라인` : '동료를 기다리는 중…');
+    for (const s of SEATS) drawDesk(s.x);
   }
   requestAnimationFrame(frame);
 }
