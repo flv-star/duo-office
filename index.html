@@ -281,7 +281,7 @@ const W = 1280; let H = 760;
 const SEATS = [{x:490,y:468},{x:790,y:468}];
 const STATUSES = {          // pause: true면 그 상태인 동안 순 근무 시간이 멈춘다
   work:{ icon:'💼', label:'업무 중', pause:false }, rest:{ icon:'☕', label:'쉬는 중', pause:true }, meal:{ icon:'🍚', label:'식사 중', pause:true },
-  move:{ icon:'🚗', label:'이동 중', pause:false }, out:{ icon:'🏃', label:'외근 중', pause:false },
+  move:{ icon:'🚗', label:'이동 중', pause:true }, out:{ icon:'🏃', label:'외근 중', pause:false },
 };
 const statusKey = r => (r && Object.hasOwn(STATUSES, r.status)) ? r.status : 'work';
 const me = { name:'', color:COLORS[0], x:490, y:468, tx:null, ty:null };
