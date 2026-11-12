@@ -27,6 +27,8 @@
   #join p{margin:0 0 20px;color:var(--sub)}
   #join label{display:block;font-weight:600;margin:14px 0 6px;font-size:13px}
   .row{display:flex;gap:8px}
+  .row button{flex:none;white-space:nowrap}
+  .row input{min-width:0}
   .swatches{display:flex;gap:8px}
   .swatches i{width:30px;height:30px;border-radius:50%;cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
   .swatches i.on{box-shadow:0 0 0 2px var(--text)}
@@ -41,7 +43,11 @@
   header .sp{flex:1}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;background:#f1f2f7;font-size:13px;font-weight:600}
   .dot{width:8px;height:8px;border-radius:50%;background:#b9bdcc}
-  .dot.on{background:var(--green)} .dot.work{background:var(--accent)} .dot.off{background:var(--amber)}
+  .dot.on{background:var(--green)} .dot.work{background:var(--accent)} .dot.off{background:var(--amber)} .dot.rest{background:#12a594}
+  .chip{font-variant-numeric:tabular-nums}
+  .net{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1.1}
+  .net.rest{color:#12a594}
+  .netsub{color:var(--sub);font-size:12px;margin-top:6px;line-height:1.5}
   main{display:grid;grid-template-columns:300px 1fr 250px;min-height:0}
   aside{background:var(--panel);overflow:auto;padding:16px}
   aside.left{border-right:1px solid var(--line)}
@@ -129,6 +135,11 @@
   <main>
     <aside class="left">
       <div class="box">
+        <h3>⏱ 오늘 순 근무 시간</h3>
+        <div class="net" id="netTime">0:00:00</div>
+        <div class="netsub" id="netSub"></div>
+      </div>
+      <div class="box">
         <h3>📝 오늘 내 할 일 <span id="myCount"></span></h3>
         <div class="row" style="margin-bottom:8px"><input id="todoInput" maxlength="80" placeholder="할 일 적고 Enter"><button id="todoAdd">추가</button></div>
         <div id="myTodos"></div>
@@ -198,12 +209,17 @@ const pad = n => String(n).padStart(2,'0');
 const dateKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hm = ts => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const dur = ms => { const m = Math.max(0, Math.floor(ms/60000)); return `${Math.floor(m/60)}시간 ${m%60}분`; };
+const hms = ms => { const s = Math.max(0, Math.floor(ms/1000)); return `${Math.floor(s/3600)}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`; };
+function breakMs(r, now = Date.now()){ const end = r.checkOut || now; return (r.breakMs||0) + (r.breakStart ? Math.max(0, end - r.breakStart) : 0); }
+function netMs(r, now = Date.now()){ return r.checkIn ? Math.max(0, (r.checkOut || now) - r.checkIn - breakMs(r, now)) : 0; }
 function hash(str){ let h1=0xdeadbeef, h2=0x41c6ce57; for (let i=0;i<str.length;i++){ const c=str.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return (h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('#toasts').append(t); setTimeout(()=>t.remove(), 3500); }
 
 /* ───────── 상태 ───────── */
 const W = 1280, H = 760;
 const SEATS = [{x:490,y:468},{x:790,y:468}];
+const REST = { x:420, y:600, w:440, h:110 };
+const inRest = a => a.x >= REST.x && a.x <= REST.x+REST.w && a.y >= REST.y-14 && a.y <= REST.y+REST.h+6;
 const me = { name:'', color:COLORS[0], x:490, y:468, tx:null, ty:null };
 const partner = { name:'', color:COLORS[1], x:790, y:468, rx:790, ry:468, online:false };
 let room = '', records = {}, today = dateKey();
@@ -213,7 +229,7 @@ const storeKey = () => 'duo-office:' + room;
 function save(){ LS.set(storeKey(), { records, partnerName: partner.name, partnerColor: partner.color }); }
 function rec(user, date = today){
   const k = date + '|' + user;
-  return records[k] || (records[k] = { date, user, checkIn:null, checkOut:null, todos:[], wrapUp:'', updatedAt:0 });
+  return records[k] || (records[k] = { date, user, checkIn:null, checkOut:null, breakMs:0, breakStart:null, todos:[], wrapUp:'', updatedAt:0 });
 }
 function touch(r){ r.updatedAt = Math.max(Date.now(), (r.updatedAt||0) + 1); save(); send({ t:'rec', r }); render(); }
 function mergeRec(r){
@@ -405,11 +421,12 @@ $('#outOk').onclick = () => {
   const r = rec(me.name);
   $('#outTodos').querySelectorAll('input').forEach(c => { const t = r.todos.find(t => t.id===c.dataset.id); if (t) t.done = c.checked; });
   r.wrapUp = $('#outText').value.trim();
-  const first = !r.checkOut; if (first) r.checkOut = Date.now();
+  const first = !r.checkOut;
+  if (first){ const now = Date.now(); if (r.breakStart){ r.breakMs = (r.breakMs||0) + Math.max(0, now - r.breakStart); r.breakStart = null; } r.checkOut = now; }
   touch(r); $('#outModal').classList.add('hidden');
-  toast(first ? `🌙 퇴근 완료! 오늘 ${dur(r.checkOut-r.checkIn)} 근무했어요` : '저장했어요');
+  toast(first ? `🌙 퇴근 완료! 오늘 순 근무 ${dur(netMs(r))}` : '저장했어요');
 };
-$('#outUndo').onclick = () => { const r = rec(me.name); r.checkOut = null; touch(r); $('#outModal').classList.add('hidden'); toast('퇴근을 취소했어요'); };
+$('#outUndo').onclick = () => { const r = rec(me.name); r.breakMs = (r.breakMs||0) + Math.max(0, Date.now() - r.checkOut); r.checkOut = null; touch(r); $('#outModal').classList.add('hidden'); toast('퇴근을 취소했어요'); };
 
 $('#btnHistory').onclick = () => {
   const dates = [...new Set(Object.values(records).filter(r => r.checkIn || r.todos.length || r.wrapUp).map(r => r.date))].sort().reverse();
@@ -417,7 +434,8 @@ $('#btnHistory').onclick = () => {
     const rs = Object.values(records).filter(r => r.date===d).sort((a,b) => a.user.localeCompare(b.user));
     return `<div class="day"><h4>${esc(d)}${d===today?' · 오늘':''}</h4><div class="cols">` + rs.map(r => `
       <div><div class="who">${esc(r.user)}</div>
-      <div class="time">${r.checkIn?'출근 '+hm(r.checkIn):'출근 기록 없음'}${r.checkOut?' → 퇴근 '+hm(r.checkOut)+' ('+dur(r.checkOut-r.checkIn)+')':''}</div>
+      <div class="time">${r.checkIn?'출근 '+hm(r.checkIn):'출근 기록 없음'}${r.checkOut?' → 퇴근 '+hm(r.checkOut):''}</div>
+      ${r.checkIn?`<div class="time"><b style="color:var(--text)">순 근무 ${dur(netMs(r))}</b> · 휴식 ${dur(breakMs(r))}${r.checkOut?'':' (진행 중)'}</div>`:''}
       ${r.todos.length?'<ul>'+r.todos.map(t=>`<li class="${t.done?'done':''}">${t.done?'✅':'⬜'} ${esc(t.text)}</li>`).join('')+'</ul>':''}
       ${r.wrapUp?`<div class="wrap"><b>마무리한 일</b>${esc(r.wrapUp)}</div>`:''}</div>`).join('') + '</div></div>';
   }).join('') : '<div class="empty">아직 기록이 없어요.</div>';
@@ -427,7 +445,25 @@ $('#histClose').onclick = () => $('#histModal').classList.add('hidden');
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('mousedown', e => { if (e.target===m) m.classList.add('hidden'); }));
 
 /* ───────── 화면 그리기 (DOM) ───────── */
-function statusOf(r){ return r.checkOut ? { cls:'off', text:`퇴근 ${hm(r.checkOut)}` } : r.checkIn ? { cls:'work', text:`근무 중 · ${hm(r.checkIn)}~` } : { cls:'', text:'출근 전' }; }
+function statusOf(r){
+  const n = hms(netMs(r));
+  return r.checkOut ? { cls:'off', text:`퇴근 ${hm(r.checkOut)} · 순 근무 ${n}`, short:`퇴근 · ${n}` }
+       : r.breakStart ? { cls:'rest', text:`☕ 휴식 중 · ${n}`, short:`휴식 중 · ${n}` }
+       : r.checkIn ? { cls:'work', text:`근무 중 · ${n}`, short:`근무 ${n}` }
+       : { cls:'', text:'출근 전', short:'출근 전' };
+}
+function renderTimer(){
+  const r = rec(me.name), resting = r.breakStart && !r.checkOut;
+  $('#netTime').textContent = hms(netMs(r)); $('#netTime').className = 'net' + (resting ? ' rest' : '');
+  $('#netSub').textContent = !r.checkIn ? '출근을 누르면 시간이 흐르기 시작해요. 쉬는 공간에 가면 멈춰요.'
+    : `출근 ${hm(r.checkIn)} · 휴식 ${dur(breakMs(r))}` + (r.checkOut ? ` · 퇴근 ${hm(r.checkOut)}` : resting ? ' · ☕ 휴식 중이라 멈춤' : '');
+}
+function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/종료
+  const r = rec(me.name); if (!r.checkIn || r.checkOut) return;
+  const rest = inRest(me), now = Date.now();
+  if (rest && !r.breakStart){ r.breakStart = now; touch(r); toast('☕ 휴식 시작 — 근무 시간이 멈췄어요'); }
+  else if (!rest && r.breakStart){ r.breakMs = (r.breakMs||0) + Math.max(0, now - r.breakStart); r.breakStart = null; touch(r); toast('💪 다시 근무 시작!'); }
+}
 function renderHeader(){
   const mr = rec(me.name), ms = statusOf(mr);
   $('#chipMe').innerHTML = `<i class="dot ${ms.cls}"></i>${esc(me.name)} · ${ms.text}`;
@@ -439,7 +475,7 @@ function renderHeader(){
 function wrapHtml(r){ return r.wrapUp ? `<div class="wrap"><b>🌙 마무리한 일</b>${esc(r.wrapUp)}</div>` : ''; }
 function render(){
   if (!me.name) return;
-  renderHeader();
+  renderHeader(); renderTimer();
   const r = rec(me.name), done = r.todos.filter(t => t.done).length;
   $('#myCount').textContent = r.todos.length ? `${done}/${r.todos.length} 완료` : '';
   $('#myTodos').innerHTML = r.todos.length ? r.todos.map(t =>
@@ -459,6 +495,7 @@ function render(){
 setInterval(() => {
   const d = new Date(); $('#clock').textContent = `${dateKey(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   if (dateKey(d) !== today){ today = dateKey(d); render(); }
+  else if (me.name){ renderHeader(); renderTimer(); }
 }, 1000);
 
 /* ───────── 사무실 맵 (캔버스) ───────── */
@@ -491,10 +528,10 @@ function drawBoard(i, name){
   if (!name){ ctx.fillStyle='#a3a8bd'; ctx.font='600 14px sans-serif'; ctx.textAlign='center'; ctx.fillText('빈 자리', x+w/2, y+h/2-10); ctx.font='12px sans-serif'; ctx.fillText('동료를 기다리는 중…', x+w/2, y+h/2+12); return; }
   const r = rec(name), st = statusOf(r), col = name===me.name ? me.color : partner.color;
   ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x+26, y+30, 6, 0, 7); ctx.fill();
-  ctx.fillStyle = '#23263a'; ctx.font = '700 15px sans-serif'; ctx.fillText(fit(name, 90), x+38, y+31);
-  ctx.font = '600 11px sans-serif'; const tw = ctx.measureText(st.text).width + 16;
-  rr(x+w-20-tw, y+20, tw, 22, 11, st.cls==='work' ? '#ecebff' : st.cls==='off' ? '#fff3d6' : '#eef0f5');
-  ctx.fillStyle = st.cls==='work' ? '#4747c2' : st.cls==='off' ? '#a56a00' : '#7b8098'; ctx.fillText(st.text, x+w-20-tw+8, y+31.5);
+  ctx.fillStyle = '#23263a'; ctx.font = '700 15px sans-serif'; ctx.fillText(fit(name, 80), x+38, y+31);
+  ctx.font = '600 11px sans-serif'; const tw = ctx.measureText(st.short).width + 16;
+  rr(x+w-20-tw, y+20, tw, 22, 11, st.cls==='work' ? '#ecebff' : st.cls==='off' ? '#fff3d6' : st.cls==='rest' ? '#d9f3ee' : '#eef0f5');
+  ctx.fillStyle = st.cls==='work' ? '#4747c2' : st.cls==='off' ? '#a56a00' : st.cls==='rest' ? '#0b7a6e' : '#7b8098'; ctx.fillText(st.short, x+w-20-tw+8, y+31.5);
   ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+20, y+50); ctx.lineTo(x+w-20, y+50); ctx.stroke();
   const showWrap = r.checkOut && r.wrapUp, max = showWrap ? 4 : 6;
   ctx.font = '13px sans-serif';
@@ -535,6 +572,7 @@ function frame(now){
     else if (me.tx != null){ const ex = me.tx-me.x, ey = me.ty-me.y, d = Math.hypot(ex,ey); if (d < 4) me.tx = me.ty = null; else { dx = ex/d; dy = ey/d; } }
     if (dx||dy){ const n = Math.hypot(dx,dy)||1; me.x = Math.max(30, Math.min(W-30, me.x + dx/n*240*dt)); me.y = Math.max(70, Math.min(H-34, me.y + dy/n*240*dt)); }
     if (now-lastSent > 66 && (me.x!==sentX || me.y!==sentY)){ send({ t:'pos', x:Math.round(me.x), y:Math.round(me.y) }); lastSent = now; sentX = me.x; sentY = me.y; }
+    syncBreak();
     partner.x += (partner.rx-partner.x)*Math.min(1, dt*12); partner.y += (partner.ry-partner.y)*Math.min(1, dt*12);
 
     ctx.setTransform(scale,0,0,scale,0,0);
@@ -548,8 +586,11 @@ function frame(now){
     // 회의 테이블
     rr(1030, 90, 200, 180, 18, '#eeeaf6'); chair(1090, 120); chair(1170, 120); rr(1055, 145, 150, 70, 12, '#fff', '#e3e6ee'); chair(1090, 245); chair(1170, 245);
     plant(940, 500); plant(60, 690); plant(1220, 690);
-    rr(420, 600, 440, 110, 18, '#fff', '#e3e6ee'); ctx.fillStyle = '#a3a8bd'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('☕ 쉬는 공간', 640, 655);
+    const resting = inRest(me);
+    rr(REST.x, REST.y, REST.w, REST.h, 18, resting ? '#d9f3ee' : '#fff', resting ? '#12a594' : '#e3e6ee');
+    rr(450, 628, 70, 54, 14, '#7fc8a4'); rr(760, 628, 70, 54, 14, '#7fc8a4');
+    ctx.textAlign = 'center'; ctx.fillStyle = resting ? '#0b7a6e' : '#7b8098'; ctx.font = '700 17px sans-serif'; ctx.fillText('☕ 쉬는 공간', 640, 644);
+    ctx.font = '13px sans-serif'; ctx.fillText(resting ? '쉬는 중 — 근무 시간이 멈춰 있어요' : '여기 들어오면 근무 시간이 멈춰요', 640, 670);
     const names = [me.name, partner.name].filter(Boolean).sort();
     for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
     const list = [[me,true]]; if (partner.online && partner.name) list.push([partner,false]);
