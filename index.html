@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>둘이 사무실</title>
+<title>월 매출 1억 사무실</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   :root{
@@ -73,6 +73,14 @@
   .bar button.on{background:#dff5ea;color:#12734b}
   .bar button.in{background:var(--accent);color:#fff}
   .bar button.out{background:var(--text);color:#fff}
+  .bar .grp{display:flex;gap:2px}
+  .bar .grp button:first-child{border-radius:10px 4px 4px 10px}
+  .bar .grp .pick{padding:10px 9px;border-radius:4px 10px 10px 4px}
+  .bar .menu{position:absolute;bottom:calc(100% + 8px);left:0;min-width:260px;max-width:360px;background:#fff;border-radius:14px;padding:8px;box-shadow:0 8px 30px rgba(40,40,90,.22)}
+  .bar .menu b{display:block;font-size:12px;color:var(--sub);padding:4px 8px 6px}
+  .bar .menu button{display:block;width:100%;text-align:left;background:none;font-weight:500;padding:9px 10px;white-space:normal}
+  .bar .menu button:hover{background:#f1f2f7}
+  .bar .menu button.cur{color:var(--accent);font-weight:700}
   .bar .sep{width:1px;background:var(--line);margin:4px 2px}
   .hint{position:absolute;left:24px;top:22px;font-size:12px;color:var(--sub);background:rgba(255,255,255,.85);padding:4px 10px;border-radius:99px}
 
@@ -109,7 +117,7 @@
 
 <div id="join">
   <div class="card">
-    <h1>🏢 둘이 사무실</h1>
+    <h1>🏢 월 매출 1억 사무실</h1>
     <p>같은 방 코드를 넣으면 같은 사무실로 들어가요.</p>
     <label>이름</label>
     <input id="jName" maxlength="10" placeholder="예: zy">
@@ -124,7 +132,7 @@
 
 <div id="app" class="hidden">
   <header>
-    <b>🏢 둘이 사무실</b>
+    <b>🏢 월 매출 1억 사무실</b>
     <span class="clock" id="clock"></span>
     <span class="sp"></span>
     <span class="chip" id="chipMe"></span>
@@ -155,8 +163,9 @@
       <canvas id="cv"></canvas>
       <div class="hint">방향키 / WASD 또는 클릭으로 이동</div>
       <div class="bar">
-        <button id="bMic">🎤 마이크</button>
-        <button id="bCam">📷 카메라</button>
+        <span class="grp"><button id="bMic">🎤 마이크</button><button class="pick" id="bMicPick" title="마이크 선택">▾</button></span>
+        <span class="grp"><button id="bCam">📷 카메라</button><button class="pick" id="bCamPick" title="카메라 선택">▾</button></span>
+        <div class="menu hidden" id="devMenu"></div>
         <button id="bScreen">🖥️ 화면 공유</button>
         <span class="sep"></span>
         <button id="bIn" class="in">☀️ 출근</button>
@@ -331,13 +340,49 @@ function handle(d){
 
 /* ───────── 카메라 · 마이크 · 화면 공유 ───────── */
 const local = { mic:null, cam:null, screen:null }, calls = {};
+const devPref = LS.get('duo-office:devices', {});
+async function openDevice(kind){          // 저장해 둔 장치로 열고, 그 장치가 없으면 기본 장치로
+  const id = devPref[kind];
+  const cons = d => kind==='mic' ? { audio: d ? { deviceId:{ exact:d } } : true }
+                                 : { video: Object.assign({ width:{ideal:640}, height:{ideal:400} }, d ? { deviceId:{ exact:d } } : {}) };
+  try { return await navigator.mediaDevices.getUserMedia(cons(id)); }
+  catch(e){
+    if (!id || !['OverconstrainedError','NotFoundError','NotReadableError'].includes(e.name)) throw e;
+    delete devPref[kind]; LS.set('duo-office:devices', devPref); toast('선택했던 장치를 열 수 없어 기본 장치로 켰어요');
+    return navigator.mediaDevices.getUserMedia(cons(null));
+  }
+}
+async function openMenu(kind){
+  const menu = $('#devMenu');
+  if (!menu.classList.contains('hidden') && menu.dataset.kind === kind) return menu.classList.add('hidden');
+  const md = navigator.mediaDevices, type = kind==='mic' ? 'audioinput' : 'videoinput';
+  const find = async () => (await md.enumerateDevices()).filter(d => d.kind === type && d.deviceId);
+  let list = await find();
+  if (!list.length || list.some(d => !d.label)){   // 권한 허용 전에는 장치 이름이 안 보여서 한 번 허용받음
+    try { const tmp = await md.getUserMedia(kind==='mic' ? { audio:true } : { video:true }); list = await find(); tmp.getTracks().forEach(t => t.stop()); }
+    catch { return toast(kind==='mic' ? '마이크를 찾을 수 없거나 권한이 없어요' : '카메라를 찾을 수 없거나 권한이 없어요'); }
+  }
+  const cur = local[kind]?.getTracks()[0]?.getSettings().deviceId || devPref[kind];
+  menu.innerHTML = `<b>${kind==='mic'?'🎤 마이크':'📷 카메라'} 선택</b>` + (list.length
+    ? list.map((d,i) => `<button data-id="${esc(d.deviceId)}" class="${d.deviceId===cur?'cur':''}">${d.deviceId===cur?'✓ ':''}${esc(d.label || '장치 '+(i+1))}</button>`).join('')
+    : '<div class="empty" style="padding:4px 8px">찾은 장치가 없어요</div>');
+  menu.dataset.kind = kind; menu.style.left = $(kind==='mic' ? '#bMic' : '#bCam').parentElement.offsetLeft + 'px';
+  menu.classList.remove('hidden');
+}
+$('#bMicPick').onclick = () => openMenu('mic'); $('#bCamPick').onclick = () => openMenu('cam');
+$('#devMenu').addEventListener('click', async e => {
+  const id = e.target.dataset?.id; if (!id) return;
+  const kind = $('#devMenu').dataset.kind; devPref[kind] = id; LS.set('duo-office:devices', devPref);
+  $('#devMenu').classList.add('hidden');
+  if (local[kind]) stopLocal(kind);
+  await toggle(kind);
+});
+document.addEventListener('mousedown', e => { if (!e.target.closest('#devMenu, .pick')) $('#devMenu').classList.add('hidden'); });
 async function toggle(kind){
   if (local[kind]) return stopLocal(kind);
   try {
     const md = navigator.mediaDevices;
-    const s = kind==='mic' ? await md.getUserMedia({ audio:true })
-            : kind==='cam' ? await md.getUserMedia({ video:{ width:{ideal:640}, height:{ideal:400} } })
-            : await md.getDisplayMedia({ video:true, audio:true });
+    const s = kind==='screen' ? await md.getDisplayMedia({ video:true, audio:true }) : await openDevice(kind);
     local[kind] = s;
     s.getVideoTracks().forEach(t => t.onended = () => stopLocal(kind));
     if (kind==='cam') addTile('me-cam', s, me.name+' (나)', true);
