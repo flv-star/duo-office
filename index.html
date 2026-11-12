@@ -95,6 +95,10 @@
   #tiles{flex:1;min-height:0;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:8px}
   .slot{position:relative;border-radius:12px;background:#eceef4;border:1px dashed #cfd3e2;display:grid;place-items:center;color:var(--sub);font-size:12px;min-height:0;overflow:hidden}
   .slot .tile:not(.big){position:absolute;inset:0;aspect-ratio:auto;border-radius:0}
+  .badges{position:absolute;left:8px;bottom:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
+  .badges span{font-size:12px;font-weight:700;font-style:normal;padding:4px 9px;border-radius:8px;background:rgba(35,38,58,.62);color:#d5d8e4}
+  .badges span.on{background:#22a06b;color:#fff}
+  .badges span.share{background:var(--accent);color:#fff}
   #mapWrap{position:relative}
   #mapWrap canvas{display:block}
   #mapWrap .chat{position:absolute;left:2.4%;top:71%;width:29.6%;height:27.6%;min-height:0;background:#fff;box-shadow:0 2px 10px rgba(40,40,90,.08)}
@@ -211,8 +215,8 @@
     </div>
     <aside class="right">
       <div id="tiles">
-        <div class="slot" id="slot-p-cam"><em></em></div>
-        <div class="slot" id="slot-me-cam"><em></em></div>
+        <div class="slot" id="slot-p-cam"><em></em><div class="badges" id="bd-p"></div></div>
+        <div class="slot" id="slot-me-cam"><em></em><div class="badges" id="bd-me"></div></div>
         <div class="slot" id="slot-p-screen"><em></em></div>
         <div class="slot" id="slot-me-screen"><em></em></div>
       </div>
@@ -349,6 +353,7 @@ function setupConn(c){
 function dropConn(){
   try { conn?.close(); } catch {}
   conn = null; partner.online = false;
+  remote.mic = remote.cam = remote.screen = false;
   ['cam','screen'].forEach(k => removeTile('p-'+k)); $('#remoteAudio').srcObject = null;
   if (partner.name) toast(`${partner.name}님이 자리를 비웠어요`);
   setConn('waiting'); render();
@@ -380,12 +385,18 @@ function handle(d){
       if (document.hidden){ unread++; document.title = `(${unread}) 월 매출 1억 사무실`; }
     }
   } else if (d.t === 'pos'){ partner.rest = d.rest ?? (+d.y > 540); }
-  else if (d.t === 'stop'){ if (d.kind==='mic') $('#remoteAudio').srcObject = null; else removeTile('p-'+d.kind); }
+  else if (d.t === 'stop'){ if (d.kind in remote){ remote[d.kind] = false; renderBadges(); } if (d.kind==='mic') $('#remoteAudio').srcObject = null; else removeTile('p-'+d.kind); }
   else if (d.t === 'bye'){ dropConn(); }
 }
 
 /* ───────── 카메라 · 마이크 · 화면 공유 ───────── */
 const local = { mic:null, cam:null, screen:null }, calls = {};
+const remote = { mic:false, cam:false, screen:false };          // 상대가 지금 보내고 있는 것
+function renderBadges(){          // 카메라 칸 왼쪽 아래: 마이크 · 화면 공유 상태
+  const html = (mic, screen) => `<span class="${mic?'on':''}">${mic?'🎤 마이크 켜짐':'🔇 마이크 꺼짐'}</span>` + (screen ? '<span class="share">🖥️ 화면 공유 중</span>' : '');
+  $('#bd-me').innerHTML = html(!!local.mic, !!local.screen);
+  $('#bd-p').innerHTML = partner.online ? html(remote.mic, remote.screen) : '<span>오프라인</span>';
+}
 const devPref = LS.get('duo-office:devices', {});
 async function openDevice(kind){          // 저장해 둔 장치로 열고, 그 장치가 없으면 기본 장치로
   const id = devPref[kind];
@@ -459,6 +470,7 @@ function onCall(call){
   const kind = call.metadata?.kind;
   call.answer();
   call.on('stream', s => {
+    if (kind in remote){ remote[kind] = true; renderBadges(); }
     if (kind==='mic') { $('#remoteAudio').srcObject = s; $('#remoteAudio').play().catch(()=>{}); }
     else if (kind==='cam') addTile('p-cam', s, partner.name||'동료', false);
     else if (kind==='screen') addTile('p-screen', s, (partner.name||'동료')+'의 화면', false);
@@ -478,6 +490,7 @@ function addTile(id, stream, label, mine){
 }
 function removeTile(id){ document.getElementById(id)?.remove(); }
 function updateButtons(){
+  renderBadges();
   $('#bMic').className = local.mic ? 'on' : ''; $('#bMic').textContent = local.mic ? '🎤 마이크 켜짐' : '🎤 마이크';
   $('#bCam').className = local.cam ? 'on' : ''; $('#bCam').textContent = local.cam ? '📷 카메라 켜짐' : '📷 카메라';
   $('#bScreen').className = local.screen ? 'on' : ''; $('#bScreen').textContent = local.screen ? '🖥️ 공유 중지' : '🖥️ 화면 공유';
@@ -720,7 +733,7 @@ function renderHeader(){
 function wrapHtml(r){ return r.wrapUp ? `<div class="wrap"><b>🌙 마무리한 일</b>${esc(r.wrapUp)}</div>` : ''; }
 function render(){
   if (!me.name) return;
-  renderHeader(); renderTimer(); renderUndone();
+  renderHeader(); renderTimer(); renderUndone(); renderBadges();
   const pn = partner.name || '동료';
   $('#slot-p-cam em').textContent = `📷 ${pn} 카메라`; $('#slot-me-cam em').textContent = '📷 내 카메라';
   $('#slot-p-screen em').textContent = `🖥️ ${pn} 화면 공유`; $('#slot-me-screen em').textContent = '🖥️ 내 화면 공유';
