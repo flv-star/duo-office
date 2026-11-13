@@ -834,8 +834,8 @@ let scale = 1;
 const LY = {};
 function layout(){          // 맵 높이(H)가 창에 맞춰 늘어나면 그만큼 패널·모니터·아래 칸을 키운다
   const e1 = Math.round((H-760)*0.45);
-  LY.panelH = 240; LY.sideY = 62+LY.panelH+10; LY.boardH = 200+e1;
-  LY.deskY = 66+LY.boardH+70; SEATS[0].y = SEATS[1].y = LY.deskY+118;
+  LY.panelH = 240; LY.sideY = 62+LY.panelH+10; LY.boardH = 320+e1;
+  LY.deskY = 58+LY.boardH+14; SEATS[0].y = SEATS[1].y = LY.deskY+62;
   LY.zoneB = SEATS[0].y+46; LY.bandY = LY.zoneB+8;
 }
 function resize(){
@@ -916,9 +916,15 @@ function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
 }
 function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
 
+function stackTop(a){
+  if (a !== me && !(partner.online && partner.name)) return Infinity;
+  const r = records[today+'|'+a.name], st = r && r.checkIn && !r.checkOut && statusKey(r) !== 'work';
+  const y = SEATS[seatOf(a.name)].y, top = st ? y-98 : y-68;
+  return a.say ? top-36 : top;
+}
 function drawBoard(i, name){
-  const x = 360 + i*300, y = 66, w = 260, h = LY.boardH;
-  rr(x+w/2-8, y+h, 16, 22, 0, '#aeb3c6'); rr(x+w/2-40, y+h+20, 80, 8, 4, '#aeb3c6');
+  const x = 350 + i*300, y = 58, w = 280, h = LY.boardH;
+  rr(x+w/2-10, y+h, 20, 16, 0, '#aeb3c6');
   rr(x, y, w, h, 14, '#262a41'); rr(x+8, y+8, w-16, h-16, 8, '#fbfbff');
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   if (!name){ ctx.fillStyle='#a3a8bd'; ctx.font='700 17px sans-serif'; ctx.textAlign='center'; ctx.fillText('빈 자리', x+w/2, y+h/2-12); ctx.font='14px sans-serif'; ctx.fillText('동료를 기다리는 중…', x+w/2, y+h/2+14); return; }
@@ -928,9 +934,10 @@ function drawBoard(i, name){
   rr(x+w-18-tw, y+20, tw, 25, 12.5, PILL[st.cls][0]); ctx.fillStyle = PILL[st.cls][1]; ctx.fillText(st.short, x+w-18-tw+8, y+33);
   ctx.fillStyle = '#23263a'; ctx.font = '700 18px sans-serif'; ctx.fillText(fit(name, w-38-18-tw-10), x+40, y+33);
   ctx.strokeStyle = '#e3e6ee'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+20, y+54); ctx.lineTo(x+w-20, y+54); ctx.stroke();
-  const showWrap = r.checkOut && r.wrapUp, gap = 27, max = Math.max(1, Math.floor((h-74-(showWrap ? 50 : 8)) / gap));
+  const free = Math.max(8, y+h - stackTop(name===me.name ? me : partner) + 6);          // 머리 위 표시에 가리는 아래쪽
+  const showWrap = r.checkOut && r.wrapUp, gap = 30, max = Math.max(1, Math.floor((h-74-free-(showWrap ? 46 : 0)) / gap));
   const more = r.todos.length > max, shown = more ? max-1 : max;
-  ctx.font = '16px sans-serif';
+  ctx.font = '17px sans-serif';
   if (!r.todos.length){ ctx.fillStyle = '#a3a8bd'; ctx.fillText('오늘 할 일이 아직 없어요', x+22, y+78); }
   r.todos.slice(0, shown).forEach((t, n) => {
     const ly = y + 76 + n*gap;
@@ -940,13 +947,13 @@ function drawBoard(i, name){
     if (t.done){ ctx.strokeStyle='#a3a8bd'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x+46,ly+1); ctx.lineTo(x+46+ctx.measureText(tx).width,ly+1); ctx.stroke(); }
   });
   if (more){ ctx.fillStyle='#7b8098'; ctx.font='14px sans-serif'; ctx.fillText(`+ ${r.todos.length-shown}개 더`, x+46, y+76+shown*gap); }
-  if (showWrap){ rr(x+18, y+h-56, w-36, 38, 8, '#f3f3fa'); ctx.fillStyle='#55597a'; ctx.font='14px sans-serif'; ctx.fillText(fit('🌙 '+r.wrapUp.replace(/\s+/g,' '), w-56), x+28, y+h-36); }
+  if (showWrap){ const wy = y+h-free-40; rr(x+18, wy, w-36, 36, 8, '#f3f3fa'); ctx.fillStyle='#55597a'; ctx.font='14px sans-serif'; ctx.fillText(fit('🌙 '+r.wrapUp.replace(/\s+/g,' '), w-56), x+28, wy+18); }
 }
-function drawDesk(i){
-  const x = 390 + i*300, y = LY.deskY;
-  rr(x, y, 200, 78, 10, '#f3ede4', '#dccfbd');
-  rr(x+70, y+14, 60, 38, 5, '#262a41'); rr(x+74, y+18, 52, 30, 3, '#8fd3ff'); rr(x+92, y+52, 16, 8, 2, '#aeb3c6');
-  rr(x+20, y+22, 30, 38, 4, '#fff', '#e3e6ee'); ctx.fillStyle='#c98a5a'; ctx.beginPath(); ctx.arc(x+168, y+40, 10, 0, 7); ctx.fill(); ctx.fillStyle='#6b4226'; ctx.beginPath(); ctx.arc(x+168, y+40, 6, 0, 7); ctx.fill();
+function drawDesk(i){          // 모니터 바로 아래 책상 상판 (노트북 없이)
+  const x = 360 + i*300, y = LY.deskY;
+  rr(x, y+4, 260, 40, 10, 'rgba(40,40,80,.07)'); rr(x, y, 260, 40, 10, '#f3ede4', '#dccfbd');
+  rr(x+18, y+8, 34, 24, 3, '#fff', '#e3e6ee'); rr(x+92, y+12, 76, 16, 4, '#d8dbe6');
+  ctx.fillStyle='#c98a5a'; ctx.beginPath(); ctx.arc(x+228, y+20, 10, 0, 7); ctx.fill(); ctx.fillStyle='#6b4226'; ctx.beginPath(); ctx.arc(x+228, y+20, 6, 0, 7); ctx.fill();
 }
 function drawAvatar(a, isMe){
   const {x, y} = a;
@@ -965,7 +972,7 @@ function drawAvatar(a, isMe){
     rr(x-bw/2, y-98, bw, 26, 13, s.pause ? '#12a594' : '#f5a524'); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y-84.5); top = y-98;
   }
   if (a.say){
-    ctx.font = '15px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 280), bw = ctx.measureText(t).width + 22;
+    ctx.font = '15px sans-serif'; const t = fit(a.say.text.replace(/\s+/g,' '), 250), bw = ctx.measureText(t).width + 22;
     const bx = Math.max(8, Math.min(W-8-bw, x-bw/2));
     rr(bx, top-36, bw, 30, 12, '#fff', '#cfd3e2'); ctx.fillStyle = '#23263a'; ctx.fillText(t, bx+bw/2, top-20.5);
   }
