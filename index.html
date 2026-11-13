@@ -132,6 +132,29 @@
   .chat .row{padding:8px;border-top:1px solid var(--line)}
   .novideo{color:var(--sub);font-size:13px;line-height:1.6}
 
+  /* 지도 안 칸(채팅·전날 못한 일·목표): 글자·여백이 지도 그림과 같은 비율로 줄고 늘게 */
+  #mapWrap{--k:1}
+  #mapWrap .chat, #mapWrap .undone{border:calc(var(--k)*2px) solid #d9dce8;border-radius:calc(var(--k)*14px);box-shadow:0 calc(var(--k)*4px) 0 rgba(40,40,80,.08);display:flex;flex-direction:column;overflow:hidden;background:#fff}
+  #mapWrap h4{margin:0;flex:none;height:calc(var(--k)*44px);display:flex;align-items:center;gap:calc(var(--k)*6px);padding:0 calc(var(--k)*14px);background:#3d4263;color:#fff;font-size:calc(var(--k)*17px);font-weight:700}
+  #mapWrap .ucol{padding:calc(var(--k)*14px) calc(var(--k)*16px)}
+  #mapWrap .goal .ucol{padding:calc(var(--k)*12px) calc(var(--k)*16px)}
+  #mapWrap .uh{font-size:calc(var(--k)*18px);gap:calc(var(--k)*8px);margin-bottom:calc(var(--k)*8px)}
+  #mapWrap .uh .dot{width:calc(var(--k)*10px);height:calc(var(--k)*10px)}
+  #mapWrap .uh span{font-size:calc(var(--k)*13px)}
+  #mapWrap .ui{font-size:calc(var(--k)*16px);line-height:1.5;padding:calc(var(--k)*7px) 0;gap:calc(var(--k)*8px)}
+  #mapWrap .ui:last-child{border-bottom:0}
+  #mapWrap .ui button{font-size:calc(var(--k)*13px);padding:calc(var(--k)*2px) calc(var(--k)*9px);border-radius:calc(var(--k)*6px)}
+  #mapWrap .empty{font-size:calc(var(--k)*15px);padding:calc(var(--k)*4px) 0}
+  #mapWrap .goal textarea, #mapWrap .gtext{font-size:calc(var(--k)*16px);line-height:1.6}
+  #mapWrap .goal textarea{padding:calc(var(--k)*10px) calc(var(--k)*12px);border-radius:calc(var(--k)*10px)}
+  #mapWrap #chatList{padding:calc(var(--k)*12px);gap:calc(var(--k)*8px);font-size:calc(var(--k)*15px)}
+  #mapWrap .msg{max-width:90%;padding:calc(var(--k)*8px) calc(var(--k)*12px);border-radius:calc(var(--k)*12px);line-height:1.5}
+  #mapWrap .msg small{font-size:calc(var(--k)*11px);margin-top:calc(var(--k)*3px)}
+  #mapWrap .daysep{font-size:calc(var(--k)*12px);margin:calc(var(--k)*4px) 0}
+  #mapWrap .chat .row{padding:calc(var(--k)*10px);gap:calc(var(--k)*8px)}
+  #mapWrap .chat input{font-size:calc(var(--k)*15px);padding:calc(var(--k)*9px) calc(var(--k)*12px);border-radius:calc(var(--k)*10px)}
+  #mapWrap .chat button{font-size:calc(var(--k)*15px);padding:calc(var(--k)*9px) calc(var(--k)*14px);border-radius:calc(var(--k)*10px)}
+
   /* 모달 */
   .modal{position:fixed;inset:0;background:rgba(20,20,40,.45);display:grid;place-items:center;z-index:45}
   .modal .card{width:min(560px,92vw);max-height:86vh;overflow:auto;background:#fff;border-radius:18px;padding:24px}
@@ -202,8 +225,9 @@
       <div id="mapWrap">
         <canvas id="cv"></canvas>
         <div class="chat">
+          <h4>💬 채팅</h4>
           <div id="chatList"></div>
-          <div class="row"><input id="chatInput" maxlength="500" placeholder="💬 메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
+          <div class="row"><input id="chatInput" maxlength="500" placeholder="메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
         </div>
         <div class="undone" id="undoneBox"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
         <div class="undone goal" id="goalBox"><h4>🎯 이번 달 목표</h4><div id="goalBody"></div></div>
@@ -816,7 +840,7 @@ function resize(){
   if (aw <= 0 || ah <= 0) return;
   H = Math.max(760, Math.min(1060, Math.round(W*ah/aw))); layout();
   const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
-  cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px';
+  cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px'; $('#mapWrap').style.setProperty('--k', cw/W);
   cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
   for (const [sel, x, y, w] of [['#mapWrap .chat', 28, LY.sideY, 300], ['#undoneBox', 340, LY.bandY, 600], ['#goalBox', 952, LY.sideY, 300]]){
     const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (y/H*100)+'%'; el.height = ((H-12-y)/H*100)+'%';
