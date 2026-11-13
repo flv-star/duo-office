@@ -152,7 +152,8 @@
   #mapWrap .msg small{font-size:calc(var(--k)*11px);margin-top:calc(var(--k)*3px)}
   #mapWrap .daysep{font-size:calc(var(--k)*12px);margin:calc(var(--k)*4px) 0}
   #mapWrap .chat .row{padding:calc(var(--k)*10px);gap:calc(var(--k)*8px)}
-  #mapWrap .chat input{font-size:calc(var(--k)*15px);padding:calc(var(--k)*9px) calc(var(--k)*12px);border-radius:calc(var(--k)*10px)}
+  #mapWrap .chat .row{align-items:flex-end}
+  #mapWrap .chat textarea{resize:none;overflow-y:auto;line-height:1.45;max-height:calc(var(--k)*140px);font-size:calc(var(--k)*15px);padding:calc(var(--k)*9px) calc(var(--k)*12px);border-radius:calc(var(--k)*10px)}
   #mapWrap .chat button{font-size:calc(var(--k)*15px);padding:calc(var(--k)*9px) calc(var(--k)*14px);border-radius:calc(var(--k)*10px)}
 
   /* 모달 */
@@ -227,7 +228,7 @@
         <div class="chat">
           <h4>💬 채팅</h4>
           <div id="chatList"></div>
-          <div class="row"><input id="chatInput" maxlength="500" placeholder="메시지 입력 후 Enter"><button id="chatSend">전송</button></div>
+          <div class="row"><textarea id="chatInput" rows="1" maxlength="500" placeholder="메시지 입력 후 Enter" title="Shift+Enter로 줄바꿈"></textarea><button id="chatSend">전송</button></div>
         </div>
         <div class="undone" id="undoneBox"><h4>📌 전날 못한 일</h4><div id="undoneBody"></div></div>
         <div class="undone goal" id="goalBox"><h4>🎯 이번 달 목표</h4><div id="goalBody"></div></div>
@@ -762,10 +763,12 @@ function renderChat(){
 function sendChat(){
   const text = $('#chatInput').value.trim(); if (!text) return;
   const m = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), user:me.name, text, ts:Date.now() };
-  chat.push(m); save(); send({ t:'chat', m }); $('#chatInput').value = ''; renderChat();
+  chat.push(m); save(); send({ t:'chat', m }); $('#chatInput').value = ''; growChat(); renderChat();
 }
 $('#chatSend').onclick = sendChat;
-$('#chatInput').addEventListener('keydown', e => { if (e.key==='Enter' && !e.isComposing) sendChat(); });
+$('#chatInput').addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); sendChat(); } });
+function growChat(){ const t = $('#chatInput'); t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }          // 쓴 만큼 칸이 늘어난다
+$('#chatInput').addEventListener('input', growChat);
 document.addEventListener('visibilitychange', () => { if (!document.hidden){ unread = 0; document.title = '월 매출 1억 사무실'; } });
 
 /* ───────── 화면 그리기 (DOM) ───────── */
@@ -842,7 +845,7 @@ function resize(){
   const cw = Math.max(320, Math.min(aw, ah*W/H)), dpr = devicePixelRatio||1;
   cv.style.width = cw+'px'; cv.style.height = (cw*H/W)+'px'; $('#mapWrap').style.setProperty('--k', cw/W);
   cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*H/W*dpr); scale = cv.width/W;
-  for (const [sel, x, y, w] of [['#mapWrap .chat', 28, LY.sideY, 300], ['#undoneBox', 340, LY.bandY, 600], ['#goalBox', 952, LY.sideY, 300]]){
+  for (const [sel, x, y, w] of [['#mapWrap .chat', 952, 62, 300], ['#undoneBox', 340, LY.bandY, 600], ['#goalBox', 28, LY.sideY, 300]]){
     const el = $(sel).style; el.left = (x/W*100)+'%'; el.width = (w/W*100)+'%'; el.top = (y/H*100)+'%'; el.height = ((H-12-y)/H*100)+'%';
   }
 }
@@ -911,24 +914,6 @@ function drawAttendance(){          // 왼쪽 벽: 오늘 출근 현황판
     rowsOf(x, w, by+44, 26, [[r.checkOut ? '출근 ~ 퇴근' : '출근', r.checkIn ? hm(r.checkIn) + (r.checkOut ? ' ~ ' + hm(r.checkOut) : '') : '—'], ['순 근무', r.checkIn ? hms(netMs(r)) : '—', true]], col);
   }
 }
-function weekData(){
-  const names = [me.name, partner.name].filter(Boolean).sort(), days = [];
-  for (let i = 6; i >= 0; i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d); }
-  return { names, days, get:(d, n) => { const r = records[dateKey(d)+'|'+n]; return r ? netMs(r) : 0; } };
-}
-function drawSummary(){             // 오른쪽 벽: 최근 7일 요약 (큰 숫자)
-  const x = 952, y = 62, w = 300, h = LY.panelH, bh = (h-56)/2; panel(x,y,w,h,'🏆 최근 7일 요약');
-  const { names, days, get } = weekData();
-  for (let i = 0; i < 2; i++){
-    const by = y+58+i*bh, n = names[i];
-    if (i === 1) divider(x, w, by-10);
-    if (!n){ waiting(x, w, by+bh/2-10); continue; }
-    const col = n===me.name ? me.color : partner.color, vals = days.map(d => get(d, n));
-    const total = vals.reduce((a,b) => a+b, 0), worked = vals.filter(v => v > 0).length;
-    personHead(x, by, w, n, col, worked + '일 출근', '');
-    rowsOf(x, w, by+44, 26, [['하루 평균', worked ? dur(total/worked) : '—'], ['7일 합계', dur(total), true]], col);
-  }
-}
 function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c3050'); }
 
 function drawBoard(i, name){
@@ -994,7 +979,7 @@ function frame(now){
     ctx.setTransform(scale,0,0,scale,0,0);
     drawFloor();
     rr(340, 44, 600, LY.zoneB-44, 20, '#e7e9f1');
-    drawAttendance(); drawSummary();
+    drawAttendance();
     const names = [me.name, partner.name].filter(Boolean).sort();
     for (let i=0;i<2;i++){ drawBoard(i, names[i]); drawDesk(i); chair(SEATS[i].x, SEATS[i].y+6); }
     const list = [[me,true]]; if (partner.online && partner.name) list.push([partner,false]);
