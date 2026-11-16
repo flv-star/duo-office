@@ -265,7 +265,7 @@
     <label style="display:block;font-weight:600;margin-top:14px">오늘 마무리한 일</label>
     <textarea id="outText" maxlength="1000" placeholder="예: 상세페이지 시안 완료, 릴스 2개 편집. 내일은 업로드부터."></textarea>
     <div class="foot">
-      <button class="ghost hidden" id="outUndo" style="margin-right:auto">퇴근 취소</button>
+      <button class="ghost hidden" id="outUndo" style="margin-right:auto">☀️ 다시 출근</button>
       <button class="ghost" id="outCancel">닫기</button>
       <button id="outOk">퇴근하기</button>
     </div>
@@ -629,7 +629,12 @@ $('#bgFile').addEventListener('change', async e => {
 });
 
 /* ───────── 출근 · 퇴근 · 할 일 ───────── */
-$('#bIn').onclick = () => { const r = rec(me.name); if (r.checkIn) return; r.checkIn = Date.now(); touch(r); toast(`☀️ 출근 완료! (${hm(r.checkIn)})`); };
+function reopen(){          // 퇴근 → 다시 출근: 퇴근해 있던 시간은 휴식으로 빼고 근무를 이어간다
+  const r = rec(me.name); if (!r.checkOut) return;
+  r.breakMs = (r.breakMs||0) + Math.max(0, Date.now() - r.checkOut); r.checkOut = null; touch(r);
+  $('#outModal').classList.add('hidden'); toast(`☀️ 다시 출근! (${hm(Date.now())})`);
+}
+$('#bIn').onclick = () => { const r = rec(me.name); if (r.checkOut) return reopen(); if (r.checkIn) return; r.checkIn = Date.now(); touch(r); toast(`☀️ 출근 완료! (${hm(r.checkIn)})`); };
 function addTodo(){
   const v = $('#todoInput').value.trim(); if (!v) return;
   const r = rec(me.name); r.todos.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,5), text:v, done:false });
@@ -665,7 +670,7 @@ $('#outOk').onclick = () => {
   touch(r); $('#outModal').classList.add('hidden');
   toast(first ? `🌙 퇴근 완료! 오늘 순 근무 ${dur(netMs(r))}` : '저장했어요');
 };
-$('#outUndo').onclick = () => { const r = rec(me.name); r.breakMs = (r.breakMs||0) + Math.max(0, Date.now() - r.checkOut); r.checkOut = null; touch(r); $('#outModal').classList.add('hidden'); toast('퇴근을 취소했어요'); };
+$('#outUndo').onclick = reopen;
 
 $('#btnHistory').onclick = () => {
   const dates = [...new Set(Object.values(records).filter(r => r.checkIn || r.todos.length || r.wrapUp).map(r => r.date))].sort().reverse();
@@ -819,7 +824,7 @@ function render(){
     $('#partnerWrap').innerHTML = wrapHtml(p);
   } else { $('#partnerTitle').textContent = '👥 동료의 할 일'; $('#partnerTodos').innerHTML = '<div class="empty">동료가 같은 방 코드로 들어오면 여기에 보여요.</div>'; $('#partnerWrap').innerHTML = ''; }
   const out = !!r.checkOut;
-  $('#bIn').disabled = !!r.checkIn; $('#bIn').textContent = r.checkIn ? `☀️ 출근 ${hm(r.checkIn)}` : '☀️ 출근';
+  $('#bIn').disabled = !!r.checkIn && !out; $('#bIn').textContent = out ? '☀️ 다시 출근' : r.checkIn ? `☀️ 출근 ${hm(r.checkIn)}` : '☀️ 출근';
   $('#bOut').textContent = out ? `🌙 퇴근 ${hm(r.checkOut)} · 수정` : '🌙 퇴근';
 }
 setInterval(() => {
