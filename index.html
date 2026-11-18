@@ -312,21 +312,22 @@ const STATUSES = {          // pause: true면 그 상태인 동안 순 근무 �
 };
 const statusKey = r => (r && Object.hasOwn(STATUSES, r.status)) ? r.status : 'work';
 const me = { name:'', color:COLORS[0], x:490, y:468, tx:null, ty:null };
-const partner = { name:'', color:COLORS[1], x:790, y:468, rx:790, ry:468, online:false };
+const partner = { name:'', color:COLORS[1], x:790, y:468, rx:790, ry:468, online:false, today:'' };
 let room = '', records = {}, chat = [], unread = 0, today = dateKey();
 let peer = null, conn = null, pending = null, slot = 1, base = '', lastSeen = 0, connState = 'init';
 
 const storeKey = () => 'duo-office:' + room;
 function save(){ LS.set(storeKey(), { records, chat: chat.slice(-500), partnerName: partner.name, partnerColor: partner.color }); }
-function rec(user, date = today){
+const dayOf = name => (name && name === partner.name && partner.online && partner.today) || today;          // 상대 기록은 상대 컴퓨터의 '오늘'로
+function rec(user, date = dayOf(user)){
   const k = date + '|' + user;
   return records[k] || (records[k] = { date, user, checkIn:null, checkOut:null, breakMs:0, breakStart:null, todos:[], wrapUp:'', updatedAt:0 });
 }
-function touch(r){ r.updatedAt = Math.max(Date.now(), (r.updatedAt||0) + 1); save(); send({ t:'rec', r }); render(); }
-function mergeRec(r){
+function touch(r){ r.updatedAt = Math.max(Date.now(), (r.updatedAt||0) + 1); save(); send({ t:'rec', r, today }); render(); }
+function mergeRec(r, author){
   if (!r || typeof r.date !== 'string' || typeof r.user !== 'string' || r.user === me.name) return;
   const k = r.date + '|' + r.user;
-  if (!records[k] || (records[k].updatedAt||0) < (r.updatedAt||0)) records[k] = r;
+  if (!records[k] || r.user === author || (records[k].updatedAt||0) < (r.updatedAt||0)) records[k] = r;
 }
 function seatOf(name){ const s = [me.name, partner.name].filter(Boolean).sort(); return Math.max(0, s.indexOf(name)); }
 
@@ -379,7 +380,7 @@ function setupConn(c){
   c.on('open', () => {
     if (conn && conn !== c) { try { conn.close(); } catch {} }
     conn = c; pending = null; lastSeen = Date.now(); partner.online = true; setConn('connected');
-    send({ t:'hello', name:me.name, color:me.color, records:Object.values(records), chat:chat.slice(-300) });
+    send({ t:'hello', name:me.name, color:me.color, today, now:Date.now(), records:Object.values(records), chat:chat.slice(-300) });
     Object.keys(local).forEach(callOut);
   });
   c.on('data', d => { if (c===conn){ lastSeen = Date.now(); handle(d); } });
@@ -388,28 +389,31 @@ function setupConn(c){
 }
 function dropConn(){
   try { conn?.close(); } catch {}
-  conn = null; partner.online = false;
+  conn = null; partner.online = false; partner.today = '';
   remote.mic = remote.cam = remote.screen = false;
   ['cam','screen'].forEach(k => removeTile('p-'+k)); $('#remoteAudio').srcObject = null;
   if (partner.name) toast(`${partner.name}님이 자리를 비웠어요`);
   setConn('waiting'); render();
 }
 function send(m){ if (conn?.open) { try { conn.send(m); } catch {} } }
-setInterval(() => { if (!conn) return; send({ t:'ping' }); if (Date.now()-lastSeen > 12000) dropConn(); }, 3000);
+setInterval(() => { if (!conn) return; send({ t:'ping', today }); if (Date.now()-lastSeen > 12000) dropConn(); }, 3000);
 addEventListener('beforeunload', () => { send({ t:'bye' }); try { peer?.destroy(); } catch {} });
 
 function handle(d){
   if (!d || typeof d !== 'object') return;
+  if (typeof d.today === 'string' && /^\d{4}-\d\d-\d\d$/.test(d.today) && d.today !== partner.today){ partner.today = d.today; render(); }
   if (d.t === 'hello'){
     const nm = String(d.name||'').slice(0,10);
     if (nm === me.name) toast('두 사람 이름이 같아요. 서로 다른 이름으로 들어와 주세요!');
     const first = partner.name !== nm; partner.name = nm; if (COLORS.includes(d.color)) partner.color = d.color;
-    (d.records||[]).forEach(mergeRec); if (mergeChat(d.chat)) renderChat(); save();
+    (d.records||[]).forEach(r => mergeRec(r, nm)); if (mergeChat(d.chat)) renderChat(); save();
     toast(`${nm}님이 들어왔어요 👋`); render();
+    if (d.today && d.today !== today) toast(`⚠️ ${nm}님 컴퓨터 날짜가 ${d.today}로 되어 있어요. 날짜·시간대 설정을 확인해 주세요`);
+    else if (typeof d.now === 'number' && Math.abs(d.now - Date.now()) > 10*60000) toast(`⚠️ ${nm}님 컴퓨터 시계가 ${Math.round(Math.abs(d.now - Date.now())/60000)}분 차이 나요. 시간 설정을 확인해 주세요`);
   } else if (d.t === 'rec'){
     const before = records[d.r?.date+'|'+d.r?.user] || {};
-    mergeRec(d.r); save();
-    if (d.r?.date === today){
+    mergeRec(d.r, partner.name); save();
+    if (d.r?.date === dayOf(d.r?.user)){
       if (d.r.checkIn && !d.r.checkOut && before.checkIn && statusKey(before) !== statusKey(d.r)){ const s = STATUSES[statusKey(d.r)]; toast(`${s.icon} ${d.r.user}님: ${s.label}`); }
       if (!before.checkIn && d.r.checkIn) toast(`☀️ ${d.r.user}님 출근! (${hm(d.r.checkIn)})`);
       if (!before.checkOut && d.r.checkOut) toast(`🌙 ${d.r.user}님 퇴근! (${hm(d.r.checkOut)})`);
@@ -923,7 +927,7 @@ function chair(x,y){ rr(x-20,y-16,40,34,10,'#3d4263'); rr(x-16,y-22,32,10,5,'#2c
 
 function stackTop(a){
   if (a !== me && !(partner.online && partner.name)) return Infinity;
-  const r = records[today+'|'+a.name], st = r && r.checkIn && !r.checkOut && statusKey(r) !== 'work';
+  const r = records[dayOf(a.name)+'|'+a.name], st = r && r.checkIn && !r.checkOut && statusKey(r) !== 'work';
   const y = SEATS[seatOf(a.name)].y, top = st ? y-98 : y-68;
   return a.say ? top-36 : top;
 }
@@ -971,7 +975,7 @@ function drawAvatar(a, isMe){
   const label = a.name + (isMe ? ' (나)' : ''), tw = ctx.measureText(label).width + 18;
   rr(x-tw/2, y-68, tw, 23, 11.5, 'rgba(35,38,58,.88)'); ctx.fillStyle = '#fff'; ctx.fillText(label, x, y-56);
   let top = y-68;          // 이름표 위: 상태 표시(업무 중이 아닐 때), 그 위에 마지막 채팅
-  const r = records[today+'|'+a.name], sk = r && r.checkIn && !r.checkOut ? statusKey(r) : 'work';
+  const r = records[dayOf(a.name)+'|'+a.name], sk = r && r.checkIn && !r.checkOut ? statusKey(r) : 'work';
   if (sk !== 'work'){
     const s = STATUSES[sk], t = `${s.icon} ${s.label}`, bw = ctx.measureText(t).width + 22;
     rr(x-bw/2, y-98, bw, 26, 13, s.pause ? '#12a594' : '#f5a524'); ctx.fillStyle = '#fff'; ctx.fillText(t, x, y-84.5); top = y-98;
