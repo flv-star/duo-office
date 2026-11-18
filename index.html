@@ -387,10 +387,12 @@ function startPeer(s){
     else if (e.type !== 'peer-unavailable') { console.warn('peer error', e.type); if (!conn) setConn('error'); }
   });
 }
-setInterval(() => {            // 2번 자리가 1번 자리로 주기적으로 연결 시도
+let pendingAt = 0;
+setInterval(() => {            // 2번 자리가 1번 자리로 연결 시도 — 집·카페처럼 다른 망이면 연결에 시간이 걸리니 15초는 기다려 준다
   if (!peer || slot!==2 || peer.destroyed || peer.disconnected || !peer.open || conn) return;
+  if (pending && Date.now() - pendingAt < 15000) return;
   try { pending?.close(); } catch {}
-  pending = peer.connect(base + '-1', { reliable:true }); setupConn(pending);
+  pending = peer.connect(base + '-1', { reliable:true }); pendingAt = Date.now(); setupConn(pending);
 }, 3000);
 function setupConn(c){
   c.on('open', () => {
