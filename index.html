@@ -356,6 +356,22 @@ function sitDown(){ updateStatusBtn(); }
 
 /* ───────── 연결 (PeerJS) ───────── */
 function setConn(s){ connState = s; renderHeader(); }
+function restartPeer(){          // 연결 서버와 끊겨 멈춘 상태에서 새로 시작
+  if (conn || !base) return;
+  try { pending?.close(); } catch {} pending = null;
+  const old = peer; peer = null; try { old?.destroy(); } catch {}
+  setConn('init'); startPeer(1);
+}
+$('#chipConn').onclick = () => { if (!conn) { restartPeer(); toast('다시 연결하는 중…'); } };
+let stuckSince = 0;
+setInterval(() => {          // 연결 서버와 10초 넘게 끊겨 있으면 알아서 새로 접속
+  const bad = !conn && base && (!peer || peer.destroyed || peer.disconnected || !peer.open);
+  if (!bad) { stuckSince = 0; return; }
+  if (!stuckSince) stuckSince = Date.now();
+  else if (Date.now() - stuckSince > 10000) { stuckSince = 0; restartPeer(); }
+}, 2000);
+addEventListener('online', () => { if (!conn) restartPeer(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !conn && peer && (peer.destroyed || peer.disconnected)) restartPeer(); });
 function startPeer(s){
   slot = s;
   if (typeof Peer === 'undefined') return setConn('error');
@@ -803,9 +819,10 @@ function syncBreak(){          // 쉬는 공간 출입에 따라 휴식 시작/�
 function renderHeader(){
   const mr = rec(me.name), ms = statusOf(mr);
   $('#chipMe').innerHTML = `<i class="dot ${ms.cls}"></i>${esc(me.name)} · ${ms.text}`;
-  if (partner.name){ const ps = statusOf(rec(partner.name)); $('#chipPartner').innerHTML = `<i class="dot ${ps.cls}"></i>${esc(partner.name)} · ${ps.text}`; $('#chipPartner').classList.remove('hidden'); }
+  if (partner.name){ const ps = partner.online ? statusOf(rec(partner.name)) : { cls:'', text:'오프라인' }; $('#chipPartner').innerHTML = `<i class="dot ${ps.cls}"></i>${esc(partner.name)} · ${ps.text}`; $('#chipPartner').classList.remove('hidden'); }
   else $('#chipPartner').classList.add('hidden');
-  const map = { init:['','연결 준비 중'], waiting:['','동료 기다리는 중'], connected:['on','연결됨'], error:['','연결 오류 · 새로고침 해보세요'] }[connState];
+  const map = { init:['','연결 준비 중'], waiting:['','동료 기다리는 중 · ↻ 다시 연결'], connected:['on','연결됨'], error:['','연결 오류 · ↻ 다시 연결'] }[connState];
+  $('#chipConn').style.cursor = connState==='connected' ? '' : 'pointer'; $('#chipConn').title = connState==='connected' ? '' : '눌러서 다시 연결';
   $('#chipConn').innerHTML = `<i class="dot ${map[0]}"></i><span>${map[1]}</span>`;
 }
 function wrapHtml(r){ return r.wrapUp ? `<div class="wrap"><b>🌙 마무리한 일</b>${esc(r.wrapUp)}</div>` : ''; }
